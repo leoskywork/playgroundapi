@@ -10,11 +10,13 @@ using System.Web.Http;
 
 namespace LeoMaster6.Controllers
 {
-    [LskExceptionFilter]
-    public class ToolController : ApiController
+    //[LskExceptionFilter]
+    public class ToolController : BaseController
     {
         public IHttpActionResult GetVer()
         {
+            _logger.Debug("enter GetVer()");
+
             var assembly = MethodInfo.GetCurrentMethod().DeclaringType.Assembly;
             var fileInfo = new FileInfo(assembly.Location);
 

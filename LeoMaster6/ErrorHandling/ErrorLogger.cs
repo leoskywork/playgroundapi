@@ -9,35 +9,24 @@ using System.Web.Http.ExceptionHandling;
 
 namespace LeoMaster6.ErrorHandling
 {
-    public class Logger: ExceptionLogger
+    public class ErrorLogger: ExceptionLogger
     {
         private ILog _logger;
 
-        public Logger()
+        public ErrorLogger()
         {
-            // Gets directory path of the calling application  
-            // RelativeSearchPath is null if the executing assembly i.e. calling assembly is a  
-            // stand alone exe file (Console, WinForm, etc).   
-            // RelativeSearchPath is not null if the calling assembly is a web hosted application i.e. a web site  
-
-            //NOOOOO! should use base dir if log4net has its own file in its own folder
-            //var log4NetConfigDirectory = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
-            var log4NetConfigDirectory = AppDomain.CurrentDomain.BaseDirectory;
-
-
-            var log4NetConfigFilePath = Path.Combine(log4NetConfigDirectory, "ErrorHandling\\log4net.config");  
-            log4net.Config.XmlConfigurator.ConfigureAndWatch(new FileInfo(log4NetConfigFilePath));
+            //pass in the log source
+            _logger = log4net.LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+            //_logger = log4net.LogManager.GetLogger(typeof(Logger));
         }
 
         public override void Log(ExceptionLoggerContext context)
         {
-            _logger = log4net.LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
             _logger.Error(context.Exception.ToString());
         }
 
         public void Error(string message)
         {
-            _logger = log4net.LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
             _logger.Error(message);
         }
 

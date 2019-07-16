@@ -9,12 +9,13 @@ using System.Web.Http;
 
 namespace LeoMaster6.Controllers
 {
-    [LskExceptionFilter]
-    public class AppController : ApiController
+    //[LskExceptionFilter]
+    public class AppController : BaseController
     {
         [System.Web.Mvc.Route("age")]
         public IHttpActionResult GetLiveTime()
         {
+            _logger.Debug("enter GetLiveTime() '/age'");
             return Json((int)Math.Ceiling(DateTime.Now.Subtract(new DateTime(2018, 12, 10)).TotalDays));
         }
 
@@ -70,7 +71,8 @@ namespace LeoMaster6.Controllers
                 content.Add("".PadLeft(128, '-') + Environment.NewLine);
             }
 
-            var env = ConfigurationManager.AppSettings.AllKeys.First(k => k.Equals("lsk-env-" + Environment.MachineName, StringComparison.OrdinalIgnoreCase));
+            var machineKey = "lsk-env-" + Environment.MachineName;
+            var env = ConfigurationManager.AppSettings.AllKeys.First(k => k.Equals(machineKey, StringComparison.OrdinalIgnoreCase));
             var dir = ConfigurationManager.AppSettings["lsk-dir-" + env];
             var datapoolEntry = ConfigurationManager.AppSettings["lsk-dir-data-pool-entry"];
             var path = Path.Combine(dir, datapoolEntry, "msg-" + DateTime.Now.ToString("yyyy-MM-dd") + ".txt");

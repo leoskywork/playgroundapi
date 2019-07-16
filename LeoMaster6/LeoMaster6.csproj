@@ -113,9 +113,10 @@
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Common\Constants.cs" />
     <Compile Include="Controllers\AppController.cs" />
+    <Compile Include="Controllers\BaseController.cs" />
     <Compile Include="ErrorHandling\LskExcepiton.cs" />
     <Compile Include="Models\DtoPost.cs" />
-    <Compile Include="ErrorHandling\Logger.cs" />
+    <Compile Include="ErrorHandling\ErrorLogger.cs" />
     <Compile Include="ErrorHandling\LskExceptionFilterAttribute.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
@@ -124,7 +125,9 @@
     <Compile Include="Controllers\ToolController.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="ErrorHandling\log4net.config" />
+    <Content Include="ErrorHandling\log4net.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <None Include="packages.config" />
     <None Include="Properties\PublishProfiles\FolderProfile.pubxml" />
     <None Include="Web.Debug.config">
