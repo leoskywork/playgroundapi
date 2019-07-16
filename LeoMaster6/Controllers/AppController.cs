@@ -9,7 +9,7 @@ using System.Web.Http;
 
 namespace LeoMaster6.Controllers
 {
-    //[LskExceptionFilter]
+    //[LskExceptionFilter] //move to base class
     public class AppController : BaseController
     {
         [System.Web.Mvc.Route("age")]
@@ -39,7 +39,7 @@ namespace LeoMaster6.Controllers
 
             //a test message
             //moon //lsk// game of throne ended //lsk// admin
-            var weekDay = DateTime.Now.DayOfWeek.ToString().Select(c => c.ToString()).ToArray();
+            //var weekDay = DateTime.Now.DayOfWeek.ToString().Select(c => c.ToString()).ToArray();
             var messageParts = message.Message.Split(new[] { Constants.MessageSeparator }, StringSplitOptions.RemoveEmptyEntries);
 
             if (messageParts.Length < 3)
@@ -47,15 +47,15 @@ namespace LeoMaster6.Controllers
                 return Unauthorized();
             }
 
-            if (!messageParts.First().StartsWith(weekDay[0], StringComparison.OrdinalIgnoreCase))
-            {
-                return Unauthorized();
-            }
+            //if (!messageParts.First().StartsWith(weekDay[0], StringComparison.OrdinalIgnoreCase))
+            //{
+            //    return Unauthorized();
+            //}
 
-            if (!messageParts.Last().StartsWith(weekDay[1], StringComparison.OrdinalIgnoreCase))
-            {
-                return Unauthorized();
-            }
+            //if (!messageParts.Last().StartsWith(weekDay[1], StringComparison.OrdinalIgnoreCase))
+            //{
+            //    return Unauthorized();
+            //}
 
             var content = new List<string>();
 
@@ -72,8 +72,8 @@ namespace LeoMaster6.Controllers
             }
 
             var machineKey = "lsk-env-" + Environment.MachineName;
-            var env = ConfigurationManager.AppSettings.AllKeys.First(k => k.Equals(machineKey, StringComparison.OrdinalIgnoreCase));
-            var dir = ConfigurationManager.AppSettings["lsk-dir-" + env];
+            var envKey = ConfigurationManager.AppSettings.AllKeys.First(k => k.Equals(machineKey, StringComparison.OrdinalIgnoreCase));
+            var dir = ConfigurationManager.AppSettings["lsk-dir-" + ConfigurationManager.AppSettings[envKey]];
             var datapoolEntry = ConfigurationManager.AppSettings["lsk-dir-data-pool-entry"];
             var path = Path.Combine(dir, datapoolEntry, "msg-" + DateTime.Now.ToString("yyyy-MM-dd") + ".txt");
             var alternate = Path.Combine(dir, datapoolEntry, "msg-" + DateTime.Now.ToString("yyyy-MM-dd_HH:mm:ss") + ".txt");

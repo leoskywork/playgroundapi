@@ -11,12 +11,14 @@ namespace LeoMaster6.ErrorHandling
 {
     public class ErrorLogger: ExceptionLogger
     {
-        private ILog _logger;
+        //better change to static member?? doesn't matter that much as this indicates error happens(normal work flow break)
+        //also want to make the instantiating happens after reading the log4net config file??
+        private static readonly ILog _logger = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         public ErrorLogger()
         {
             //pass in the log source
-            _logger = log4net.LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+            //_logger = log4net.LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
             //_logger = log4net.LogManager.GetLogger(typeof(Logger));
         }
 

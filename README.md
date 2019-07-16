@@ -10,4 +10,5 @@ Build bits will be copied to debug folder(.../api/) for testing(localhost:84/api
 
 ## todo
 
-* [ ] make logger.Info(...) work
+* [x] make logger.Info(...) work
+* [ ] support authorization
