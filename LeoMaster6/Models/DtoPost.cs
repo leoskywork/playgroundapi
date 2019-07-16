@@ -1,10 +1,12 @@
 ﻿
 
-
-
-public class DtoPost
+namespace LeoMaster6.Models
 {
-    public string Title { get; set; }
 
-    public string Message { get; set; }
+    public class DtoPost
+    {
+        public string Title { get; set; }
+
+        public string Message { get; set; }
+    }
 }

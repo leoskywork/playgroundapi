@@ -30,7 +30,7 @@ namespace LeoMaster6.ErrorHandling
             {
                 context.Response = new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized)
                 {
-                    ReasonPhrase = "Oops!"
+                    ReasonPhrase = "Oops! " + context.Exception.Message
                 };
             }
         }

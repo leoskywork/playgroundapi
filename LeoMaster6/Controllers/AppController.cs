@@ -1,5 +1,6 @@
 ﻿using LeoMaster6.Common;
 using LeoMaster6.ErrorHandling;
+using LeoMaster6.Models;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -12,13 +13,14 @@ namespace LeoMaster6.Controllers
     //[LskExceptionFilter] //move to base class
     public class AppController : BaseController
     {
-        [System.Web.Mvc.Route("age")]
-        public IHttpActionResult GetLiveTime()
-        {
-            _logger.Debug("enter GetLiveTime() '/age'");
-            return Json((int)Math.Ceiling(DateTime.Now.Subtract(new DateTime(2018, 12, 10)).TotalDays));
-        }
+        //[System.Web.Mvc.Route("age")]
+        //public IHttpActionResult GetLiveTime()
+        //{
+        //    _logger.Debug("enter GetLiveTime() '/age'");
+        //    return Json((int)Math.Ceiling(DateTime.Now.Subtract(new DateTime(2018, 12, 10)).TotalDays));
+        //}
 
+        /*
         [HttpPost]
         public IHttpActionResult PostMessage([FromBody]DtoPost message)
         {
@@ -71,12 +73,8 @@ namespace LeoMaster6.Controllers
                 content.Add("".PadLeft(128, '-') + Environment.NewLine);
             }
 
-            var machineKey = "lsk-env-" + Environment.MachineName;
-            var envKey = ConfigurationManager.AppSettings.AllKeys.First(k => k.Equals(machineKey, StringComparison.OrdinalIgnoreCase));
-            var dir = ConfigurationManager.AppSettings["lsk-dir-" + ConfigurationManager.AppSettings[envKey]];
-            var datapoolEntry = ConfigurationManager.AppSettings["lsk-dir-data-pool-entry"];
-            var path = Path.Combine(dir, datapoolEntry, "msg-" + DateTime.Now.ToString("yyyy-MM-dd") + ".txt");
-            var alternate = Path.Combine(dir, datapoolEntry, "msg-" + DateTime.Now.ToString("yyyy-MM-dd_HH:mm:ss") + ".txt");
+            var path = GetFullTitledMessagePath();
+            var alternate = GetFullTitledMessageAlterPath();
 
             AppendToFile(string.Join(Environment.NewLine, content), path, alternate);
 
@@ -84,6 +82,87 @@ namespace LeoMaster6.Controllers
 
             //await the async method to finish?? to ensure message saved??
             //actual should return: Created("...")
+        }
+        */
+
+        //[HttpGet]
+        //public IHttpActionResult Message()
+        //{
+        //    var path = GetFullTitledMessagePath();
+
+        //    return Json(File.Exists(path) ? File.ReadAllText(path) : string.Empty);
+        //}
+
+        [HttpPost]
+        public IHttpActionResult Clipboard([FromBody]string message)
+        {
+            if (string.IsNullOrEmpty(message))
+            {
+                throw new ArgumentNullException(nameof(message));
+            }
+
+            //todo improve this, hard coded as dev session id for now
+            if (!CheckSession())
+            {
+                return Unauthorized();
+            }
+
+            var item = new DtoClipboardItem()
+            {
+                SessionId = Request.Headers.GetValues(Constants.HeaderSessionId).First(),
+                CreatedAt = DateTime.Now,
+                Data = message
+            };
+
+            string path = GetFullClipboardDataPath();
+            AppendToFile(Newtonsoft.Json.JsonConvert.SerializeObject(item) + Environment.NewLine, path);
+
+            return Json($"{message.Length} characters saved to clipboard.");
+        }
+
+
+        [HttpGet]
+        public IHttpActionResult Clipboard()
+        {
+            if (!CheckSession())
+            {
+                return Unauthorized();
+            }
+
+            string path = GetFullClipboardDataPath();
+
+            return Ok(File.Exists(path) ? File.ReadAllText(path) : string.Empty);
+        }
+
+
+        #region Helpers
+
+        private static string GetFullTitledMessagePath()
+        {
+            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), "msg-" + DateTime.Now.ToString("yyyy-MM-dd") + ".txt");
+        }
+
+        private static string GetFullTitledMessageAlterPath()
+        {
+            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), "msg-" + DateTime.Now.ToString("yyyy-MM-dd_HH:mm:ss") + ".txt");
+        }
+
+        private static string GetFullClipboardDataPath()
+        {
+            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), "clip-" + (DateTime.Now.DayOfYear / 7 + 1).ToString("D2") + DateTime.Now.ToString("-yyyy-MM") + ".json");
+        }
+
+        private static string GetDatapoolEntry()
+        {
+            return ConfigurationManager.AppSettings["lsk-dir-data-pool-entry"];
+        }
+
+        private static string GetBaseDirectory()
+        {
+            var machineKey = "lsk-env-" + Environment.MachineName;
+            var envKey = ConfigurationManager.AppSettings.AllKeys.First(k => k.Equals(machineKey, StringComparison.OrdinalIgnoreCase));
+            var dir = ConfigurationManager.AppSettings["lsk-dir-" + ConfigurationManager.AppSettings[envKey]];
+            return dir;
         }
 
         private void AppendToFile(string content, string path, string alternatePath = null)
@@ -122,6 +201,12 @@ namespace LeoMaster6.Controllers
             }
         }
 
+        private bool CheckSession()
+        {
+            return Request.Headers.TryGetValues(Constants.HeaderSessionId, out IEnumerable<string> sessionIds) && sessionIds.FirstOrDefault() == Constants.DevSessionId;
+        }
+
+        #endregion
     }
 
 
