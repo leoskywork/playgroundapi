@@ -6,14 +6,14 @@ namespace LeoMaster6.ErrorHandling
     {
         public string TechnicalInfo { get; set; }
 
-        public LskExcepiton(string message) : base(message)
+        public LskExcepiton(string message, string techInfo = null) : base(message)
         {
-
+            this.TechnicalInfo = techInfo;
         }
 
-        public LskExcepiton(string message, Exception innerEx) : base(message, innerEx)
+        public LskExcepiton(string message, Exception innerEx, string techInfo = null) : base(message, innerEx)
         {
-
+            this.TechnicalInfo = techInfo;
         }
 
         public override string ToString()

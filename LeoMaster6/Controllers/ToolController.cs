@@ -18,7 +18,7 @@ namespace LeoMaster6.Controllers
             var assembly = MethodInfo.GetCurrentMethod().DeclaringType.Assembly;
             var fileInfo = new FileInfo(assembly.Location);
 
-            return Json($"Asp.NET Api; {string.Join(";", assembly.FullName.Split(',').Take(2))}; Build At {fileInfo.CreationTime.ToString("yyyy-MM-dd H:mm:ss")}");
+            return Json($"Asp.NET Api; {string.Join(";", assembly.FullName.Split(',').Take(2))}; Build At {fileInfo.CreationTime.ToString("yyyy-MM-dd H:mm:ss")}({fileInfo.CreationTime.Kind})");
         }
     }
 }

@@ -8,3 +8,6 @@ Build bits will be copied to debug folder(.../api/) for testing(localhost:84/api
 
 * integrate with log4net.
 
+## todo
+
+* [ ] make logger.Info(...) work

@@ -111,6 +111,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="App_Start\WebApiConfig.cs" />
+    <Compile Include="Common\Constants.cs" />
     <Compile Include="Controllers\AppController.cs" />
     <Compile Include="ErrorHandling\LskExcepiton.cs" />
     <Compile Include="Models\DtoPost.cs" />

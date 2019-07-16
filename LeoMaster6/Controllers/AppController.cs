@@ -1,4 +1,5 @@
-﻿using LeoMaster6.ErrorHandling;
+﻿using LeoMaster6.Common;
+using LeoMaster6.ErrorHandling;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -35,8 +36,10 @@ namespace LeoMaster6.Controllers
                 throw new LskExcepiton("Divide by zero: " + message.Message);
             }
 
+            //a test message
+            //moon //lsk// game of throne ended //lsk// admin
             var weekDay = DateTime.Now.DayOfWeek.ToString().Select(c => c.ToString()).ToArray();
-            var messageParts = message.Message.Split(new[] { "//lsk//" }, StringSplitOptions.RemoveEmptyEntries);
+            var messageParts = message.Message.Split(new[] { Constants.MessageSeparator }, StringSplitOptions.RemoveEmptyEntries);
 
             if (messageParts.Length < 3)
             {
@@ -67,18 +70,21 @@ namespace LeoMaster6.Controllers
                 content.Add("".PadLeft(128, '-') + Environment.NewLine);
             }
 
-            var dir = ConfigurationManager.AppSettings["lsk-dir-" + ConfigurationManager.AppSettings["lsk-env"]];
-            var path = Path.Combine(dir, "data-pool\\msg-" + DateTime.Now.ToString("yyyy-MM-dd") + ".txt");
-            var alternate = Path.Combine(dir, "data-pool\\msg-" + DateTime.Now.ToString("yyyy-MM-dd_HH:mm:ss") + ".txt");
+            var env = ConfigurationManager.AppSettings.AllKeys.First(k => k.Equals("lsk-env-" + Environment.MachineName, StringComparison.OrdinalIgnoreCase));
+            var dir = ConfigurationManager.AppSettings["lsk-dir-" + env];
+            var datapoolEntry = ConfigurationManager.AppSettings["lsk-dir-data-pool-entry"];
+            var path = Path.Combine(dir, datapoolEntry, "msg-" + DateTime.Now.ToString("yyyy-MM-dd") + ".txt");
+            var alternate = Path.Combine(dir, datapoolEntry, "msg-" + DateTime.Now.ToString("yyyy-MM-dd_HH:mm:ss") + ".txt");
 
             AppendToFile(string.Join(Environment.NewLine, content), path, alternate);
 
             return Json($"Your post{(string.IsNullOrWhiteSpace(message.Title) ? "" : " (" + message.Title.Trim() + ")")} is saved.");
 
+            //await the async method to finish?? to ensure message saved??
             //actual should return: Created("...")
         }
 
-        private static void AppendToFile(string content, string path, string alternatePath = null)
+        private void AppendToFile(string content, string path, string alternatePath = null)
         {
             if (!Directory.Exists(Path.GetDirectoryName(path)))
             {
