@@ -7,6 +7,10 @@ namespace LeoMaster6.Models
 {
     public class DtoClipboardItem
     {
+        //no easy way to track this without file/db
+        //public int Id { get; set; }
+
+        public Guid Uid { get; set; } = Guid.Empty;
         public string SessionId { get; set; }
         public DateTime CreatedAt { get; set; }
         public string Data { get; set; }
