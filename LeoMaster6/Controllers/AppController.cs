@@ -237,8 +237,11 @@ namespace LeoMaster6.Controllers
                         fileWriter.WriteAsync(content);
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    _logger.Error($"Got an error while writing to {path}, going to save to alter file {alternatePath}.", ex);
+
+                    //shouldn't have done this, just over thinking here and waste time
                     if (!string.IsNullOrEmpty(alternatePath) && !File.Exists(alternatePath))
                     {
                         using (var fileWriter = new StreamWriter(File.Create(alternatePath)))
