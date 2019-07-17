@@ -14,3 +14,8 @@ Build bits will be copied to debug folder(.../api/) for testing(localhost:84/api
 * [ ] multiple get methods not working??
     * [x] get result - invalid json format??
 * [ ] support authorization
+
+## FAQ
+
+* how to fix UnauthorizedAccessException?
+  > grant proper permissions to user IIS_IUSRS on that folder

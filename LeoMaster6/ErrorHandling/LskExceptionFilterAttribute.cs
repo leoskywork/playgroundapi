@@ -32,6 +32,10 @@ namespace LeoMaster6.ErrorHandling
                 {
                     ReasonPhrase = "Oops! " + context.Exception.Message
                 };
+
+                //?? partial of the error message(Chinese) on postman are gibberish, not sure why
+                //not working
+                //context.Response.Headers.TransferEncoding.Add(new System.Net.Http.Headers.TransferCodingHeaderValue("utf-8"));
             }
         }
     }

@@ -124,9 +124,7 @@
     <Compile Include="Controllers\ToolController.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="ErrorHandling\log4net.config">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    <Content Include="ErrorHandling\log4net.config" />
     <None Include="packages.config" />
     <None Include="Properties\PublishProfiles\FolderProfile.pubxml" />
     <None Include="Web.Debug.config">

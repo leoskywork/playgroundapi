@@ -30,7 +30,7 @@ namespace LeoMaster6
 
         private static void ConfigLog4Net()
         {
-            // NOTE! change property of 'log4net.confg' to 'Copy Always'
+            // NOTE! change property of 'log4net.confg' to 'Copy Always'?? - no, no need to do this
             // doc - https://logging.apache.org/log4net/release/faq.html
 
             // Gets directory path of the calling application  
