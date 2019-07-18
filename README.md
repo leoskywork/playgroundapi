@@ -13,6 +13,7 @@ Build bits will be copied to debug folder(.../api/) for testing(localhost:84/api
 * [x] make logger.Info(...) work
 * [ ] multiple get methods not working??
     * [x] get result - invalid json format??
+* [ ] a method to return history clipboard
 * [ ] support authorization
 
 ## FAQ

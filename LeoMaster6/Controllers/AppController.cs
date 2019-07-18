@@ -198,7 +198,10 @@ namespace LeoMaster6.Controllers
 
         private static string GetFullClipboardDataPath(DateTime time)
         {
-            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), "clip-" + (time.DayOfYear / 7 + 1).ToString("D2") + time.ToString("-yyyy-MM") + ".json");
+            //not the normal week of year, this is too complex to determinate the date boundaries of every portion(file)
+            //return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), "clip-" + (time.DayOfYear / 7 + 1).ToString("D2") + time.ToString("-yyyy-MM") + ".json");
+
+            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), "clip-" + time.ToString("yyyy-MM") + ".json");
         }
 
         private static string GetDatapoolEntry()
