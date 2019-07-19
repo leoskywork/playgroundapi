@@ -11,7 +11,8 @@ namespace LeoMaster6.Models
         //public int Id { get; set; }
 
         public Guid Uid { get; set; } = Guid.Empty;
-        public string SessionId { get; set; }
+        //public string SessionId { get; set; }
+        public string UserId { get; set; }
         public DateTime CreatedAt { get; set; }
         public string Data { get; set; }
     }

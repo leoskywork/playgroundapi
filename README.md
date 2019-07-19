@@ -16,7 +16,7 @@ Build bits will be copied to debug folder(.../api/) for testing(localhost:84/api
 * [ ] a method to return history clipboard
 * [ ] support authorization
 
-## FAQ
+## error fix
 
 * how to fix UnauthorizedAccessException?
   > grant proper permissions to user IIS_IUSRS on that folder

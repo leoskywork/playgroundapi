@@ -112,6 +112,7 @@
     <Compile Include="Common\Constants.cs" />
     <Compile Include="Controllers\AppController.cs" />
     <Compile Include="Controllers\BaseController.cs" />
+    <Compile Include="Controllers\NoteController.cs" />
     <Compile Include="ErrorHandling\LskExcepiton.cs" />
     <Compile Include="Models\DtoClipboardItem.cs" />
     <Compile Include="Models\DtoPost.cs" />

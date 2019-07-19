@@ -1,6 +1,8 @@
 ﻿using LeoMaster6.ErrorHandling;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -18,5 +20,62 @@ namespace LeoMaster6.Controllers
         {
             _logger = log4net.LogManager.GetLogger(this.GetType());
         }
+
+
+        #region helpers
+
+        public static string GetDatapoolEntry()
+        {
+            return ConfigurationManager.AppSettings["lsk-dir-data-pool-entry"];
+        }
+
+        public static string GetBaseDirectory()
+        {
+            var machineKey = "lsk-env-" + Environment.MachineName;
+            var envKey = ConfigurationManager.AppSettings.AllKeys.First(k => k.Equals(machineKey, StringComparison.OrdinalIgnoreCase));
+            var dir = ConfigurationManager.AppSettings["lsk-dir-" + ConfigurationManager.AppSettings[envKey]];
+            return dir;
+        }
+
+        protected void AppendToFile(string content, string path, string alternatePath = null)
+        {
+            if (!Directory.Exists(Path.GetDirectoryName(path)))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+            }
+
+            if (!File.Exists(path))
+            {
+                using (var fileWriter = new StreamWriter(File.Create(path)))
+                {
+                    fileWriter.WriteAsync(content);
+                }
+            }
+            else
+            {
+                try
+                {
+                    using (var fileWriter = new StreamWriter(path, true))
+                    {
+                        fileWriter.WriteAsync(content);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Got an error while writing to {path}, going to save to alter file {alternatePath}.", ex);
+
+                    //shouldn't have done this, just over thinking here and waste time
+                    if (!string.IsNullOrEmpty(alternatePath) && !File.Exists(alternatePath))
+                    {
+                        using (var fileWriter = new StreamWriter(File.Create(alternatePath)))
+                        {
+                            fileWriter.WriteAsync(content);
+                        }
+                    }
+                }
+            }
+        }
+
+        #endregion
     }
 }
