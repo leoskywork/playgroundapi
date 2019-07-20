@@ -2,10 +2,9 @@
 using LeoMaster6.Models;
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
 using System.Web.Http;
 
 namespace LeoMaster6.Controllers
@@ -38,6 +37,58 @@ namespace LeoMaster6.Controllers
             AppendToFile(Newtonsoft.Json.JsonConvert.SerializeObject(item) + Environment.NewLine, path);
 
             return Json($"{message.Length} characters saved to clipboard.");
+        }
+
+        [HttpPut]
+        public IHttpActionResult Clipboard([FromBody]string message, [FromBody]string uid, [FromBody]DateTime date)
+        {
+            if (string.IsNullOrEmpty(uid))
+            {
+                throw new ArgumentNullException(nameof(uid));
+            }
+
+            var parsedUid = Guid.Parse(uid);
+
+            //todo improve this, hard coded as dev session id for now
+            if (!CheckHeaderSession())
+            {
+                //return Unauthorized();
+            }
+
+            //todo - allow update history notes, only allow update current month notes now
+            date = DateTime.Now;
+            string path = GetFullClipboardDataPath(date);
+            var notes = ReadLskJson(path, int.MaxValue, 1, (line) => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line));
+            //perf - 2n here, can be optimal to n
+            var foundNote = notes.FirstOrDefault(n => n.Uid == parsedUid);
+            var foundChild = notes.FirstOrDefault(n => n.ParentUid == parsedUid);
+
+            if (foundChild != null)
+            {
+                throw new InvalidOperationException("Data already changed, please reload to latest then edit");
+            }
+
+            if (foundNote != null)
+            {
+                var newNote = Utility.DeepClone(foundNote);
+
+                newNote.Uid = Guid.NewGuid(); //reset
+                newNote.Data = message;
+
+                newNote.HasUpdated = true;
+                //todo - replace with real UserId(get by session id)
+                newNote.LastUpdatedBy = foundNote.UserId.Substring(0, foundNote.UserId.Length - 2) + DateTime.Now.ToString("dd");
+                newNote.LastUpdatedAt = DateTime.Now;
+                newNote.ParentUid = foundNote.Uid;
+
+                AppendToFile(Newtonsoft.Json.JsonConvert.SerializeObject(newNote) + Environment.NewLine, path);
+
+                return Json(new { found = true, message = "Data updated", data = newNote });
+            }
+            else
+            {
+                return Json(new { found = false, message = "The data you try to update may have been deleted" });
+            }
         }
 
         //todo pass in the DateTime, page size, page index
@@ -79,10 +130,23 @@ namespace LeoMaster6.Controllers
             //    return Json(items);
             //}
 
+            var items = ReadLskJson(path, pageSize, pageIndex, (line) =>
+            {
+                return Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line);
+            });
+
+
+            return Json(ApplyJSNameConvention(items));
+        }
+
+        private static IEnumerable<T> ReadLskJson<T>(string path, int pageSize, int pageIndex, Func<string, T> mapper)
+        {
+            if (string.IsNullOrEmpty(path)) throw new ArgumentNullException(nameof(path));
+            if (mapper == null) throw new ArgumentNullException(nameof(mapper));
 
             //can't read entire file one time, the entire file is not in valid json format(for array)
             //hover every line is a valid json object
-            var items = new List<DtoClipboardItem>();
+            var items = new List<T>();
             var lineNumber = 0;
             using (var reader = File.OpenText(path))
             {
@@ -94,15 +158,43 @@ namespace LeoMaster6.Controllers
                     var line = reader.ReadLine();
                     if (!string.IsNullOrWhiteSpace(line) && lineNumber > pageSize * (pageIndex - 1))
                     {
-                        items.Add(Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line));
+                        items.Add(mapper(line));
                     }
                 }
                 while (!reader.EndOfStream && items.Count < pageSize);
             }
 
-            return Json(items);
+            return items;
         }
 
+
+        private static IEnumerable<object> ApplyJSNameConvention(IEnumerable<DtoClipboardItem> items)
+        {
+            if (items?.Count() > 0)
+            {
+                return items.Select(i =>
+                {
+                    dynamic jsonObject = new ExpandoObject();
+
+                    jsonObject.uid = i.Uid;
+                    jsonObject.userId = i.UserId;
+                    jsonObject.createdAt = i.CreatedAt;
+                    jsonObject.data = i.Data;
+
+                    if (i.HasUpdated == true)
+                    {
+                        jsonObject.hasUpdated = i.HasUpdated;
+                        jsonObject.lastUpdatedBy = i.LastUpdatedBy;
+                        jsonObject.lastUpdatedAt = i.LastUpdatedAt;
+                        jsonObject.parentUid = i.ParentUid;
+                    }
+
+                    return jsonObject;
+                });
+            }
+
+            return items;
+        }
 
 
         private bool CheckHeaderSession()

@@ -116,6 +116,7 @@
   <ItemGroup>
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Common\Constants.cs" />
+    <Compile Include="Common\Utility.cs" />
     <Compile Include="Controllers\AppController.cs" />
     <Compile Include="Controllers\BaseController.cs" />
     <Compile Include="Controllers\NoteController.cs" />
