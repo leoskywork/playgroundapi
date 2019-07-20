@@ -42,10 +42,7 @@ namespace LeoMaster6.Controllers
         [HttpPut]
         public IHttpActionResult Clipboard([FromBody]string message, [FromBody]string uid, [FromBody]DateTime date)
         {
-            if (string.IsNullOrEmpty(uid))
-            {
-                throw new ArgumentNullException(nameof(uid));
-            }
+            if (string.IsNullOrEmpty(uid)) throw new ArgumentNullException(nameof(uid));
 
             var parsedUid = Guid.Parse(uid);
 
@@ -55,13 +52,13 @@ namespace LeoMaster6.Controllers
                 //return Unauthorized();
             }
 
-            //todo - allow update history notes, only allow update current month notes now
-            date = DateTime.Now;
             string path = GetFullClipboardDataPath(date);
+            if (!File.Exists(path)) return Ok();
+
             var notes = ReadLskJson(path, int.MaxValue, 1, (line) => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line));
             //perf - 2n here, can be optimized to n
-            var foundNote = notes.FirstOrDefault(n => n.Uid == parsedUid);
-            var foundChild = notes.FirstOrDefault(n => n.ParentUid == parsedUid);
+            var foundNote = notes.FirstOrDefault(n =>  n.HasDeleted != true && n.Uid == parsedUid);
+            var foundChild = notes.FirstOrDefault(n => n.HasDeleted != true && n.ParentUid == parsedUid);
 
             if (foundChild != null)
             {
@@ -106,16 +103,19 @@ namespace LeoMaster6.Controllers
 
             string path = GetFullClipboardDataPath(time);
 
-            /*
-             //why there are escaped chars('\')?
-             "{\"SessionId\":\"dev001abc\",\"CreatedAt\":\"2019-07-17T00:51:57.4275352+08:00\",\"Data\":\"friend//lsk// 222   //lsk//run\"}{\"SessionId\":\"dev001abc\",\"CreatedAt\":\"2019-07-17T00:54:09.7961408+08:00\",\"Data\":\"test333\"}{\"SessionId\":\"dev001abc\",\"CreatedAt\":\"2019-07-17T00:58:27.2650479+08:00\",\"Data\":\"test4\"}\r\n{\"SessionId\":\"dev001abc\",\"CreatedAt\":\"2019-07-17T00:58:43.5578953+08:00\",\"Data\":\"test5\"}\r\n{\"SessionId\":\"dev001abc\",\"CreatedAt\":\"2019-07-17T00:58:57.989691+08:00\",\"Data\":\"test6\"}\r\n"
-             */
-            //return Ok(File.Exists(path) ? File.ReadAllText(path) : string.Empty);
-
             if (!File.Exists(path))
             {
                 return Ok();
             }
+
+
+            var items = ReadLskJson(path, pageSize, pageIndex, (line) =>
+            {
+                return Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line);
+            });
+
+
+            return Json(ApplyJSNameConvention(items));
 
             //following code works only when the entire file is in valid format 
             //  - which is not the case here
@@ -129,15 +129,33 @@ namespace LeoMaster6.Controllers
 
             //    return Json(items);
             //}
-
-            var items = ReadLskJson(path, pageSize, pageIndex, (line) =>
-            {
-                return Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line);
-            });
-
-
-            return Json(ApplyJSNameConvention(items));
         }
+
+        [HttpDelete]
+        public IHttpActionResult Clipboard([FromBody] string uid, [FromBody] DateTime date)
+        {
+            if (string.IsNullOrEmpty(uid)) throw new ArgumentNullException(nameof(uid));
+
+
+            string path = GetFullClipboardDataPath(date);
+            if (!File.Exists(path)) return Ok();
+
+            var notes = ReadLskJson(path, int.MaxValue, 1, line => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line));
+            var foundNote = notes.FirstOrDefault(n => n.HasDeleted != true && n.Uid == Guid.Parse(uid));
+
+            if (foundNote == null) return Ok();
+
+            //soft delete
+            foundNote.HasDeleted = true;
+            //todo - replace with real UserId(get by session id)
+            foundNote.DeletedBy = foundNote.UserId.Substring(0, foundNote.UserId.Length - 2) + DateTime.Now.ToString("dd");
+            foundNote.DeletedAt = DateTime.Now;
+
+            //todo
+        }
+
+
+        #region helpers
 
         private static IEnumerable<T> ReadLskJson<T>(string path, int pageSize, int pageIndex, Func<string, T> mapper)
         {
@@ -219,5 +237,7 @@ namespace LeoMaster6.Controllers
 
             return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), "clip-" + time.ToString("yyyy-MM") + ".json");
         }
+
+        #endregion
     }
 }

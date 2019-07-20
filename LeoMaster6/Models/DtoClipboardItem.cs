@@ -20,5 +20,9 @@ namespace LeoMaster6.Models
         public string LastUpdatedBy { get; set; }
         public DateTime? LastUpdatedAt { get; set; }
         public Guid? ParentUid { get; set; }
+
+        public bool? HasDeleted { get; set; }
+        public string DeletedBy { get; set; }
+        public DateTime? DeletedAt { get; set; }
     }
 }
