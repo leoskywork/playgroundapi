@@ -37,6 +37,7 @@ namespace LeoMaster6
             //   - ref https://www.c-sharpcorner.com/article/enable-cors-in-asp-net-webapi-2/
             // need install package
             //   - Install-Package Microsoft.AspNet.WebApi.Cors
+            // can enable CORS at global, controller or action level
 
             // parameter 'origins' - allow those sites to access to resources of current site
             var cors = new EnableCorsAttribute("http://localhost:4200,http://leoskywork.com:84", "*", "GET,POST");
