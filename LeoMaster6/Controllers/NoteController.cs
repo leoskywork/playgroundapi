@@ -59,7 +59,7 @@ namespace LeoMaster6.Controllers
             date = DateTime.Now;
             string path = GetFullClipboardDataPath(date);
             var notes = ReadLskJson(path, int.MaxValue, 1, (line) => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line));
-            //perf - 2n here, can be optimal to n
+            //perf - 2n here, can be optimized to n
             var foundNote = notes.FirstOrDefault(n => n.Uid == parsedUid);
             var foundChild = notes.FirstOrDefault(n => n.ParentUid == parsedUid);
 
