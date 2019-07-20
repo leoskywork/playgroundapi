@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Web.Http;
+using System.Web.Http.Cors;
 using System.Web.Http.ExceptionHandling;
 
 namespace LeoMaster6
@@ -21,11 +22,25 @@ namespace LeoMaster6
             // Web API routes
             config.MapHttpAttributeRoutes();
 
+            ConfigGlobalCors(config);
+
             config.Routes.MapHttpRoute(
                 name: "DefaultApi",
                 routeTemplate: "{controller}/{id}",
                 defaults: new { id = RouteParameter.Optional }
             );
+        }
+
+        private static void ConfigGlobalCors(HttpConfiguration config)
+        {
+            // allow cross origin resource sharing
+            //   - ref https://www.c-sharpcorner.com/article/enable-cors-in-asp-net-webapi-2/
+            // need install package
+            //   - Install-Package Microsoft.AspNet.WebApi.Cors
+
+            // parameter 'origins' - allow those sites to access to resources of current site
+            var cors = new EnableCorsAttribute("http://localhost:4200,http://leoskywork.com:84", "*", "GET,POST");
+            config.EnableCors(cors);
         }
 
         private static void ConfigLog4Net()

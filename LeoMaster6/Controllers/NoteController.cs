@@ -23,7 +23,7 @@ namespace LeoMaster6.Controllers
             //todo improve this, hard coded as dev session id for now
             if (!CheckHeaderSession())
             {
-                return Unauthorized();
+                //return Unauthorized();
             }
 
             var item = new DtoClipboardItem()
@@ -50,7 +50,7 @@ namespace LeoMaster6.Controllers
 
             if (!CheckHeaderSession())
             {
-                return Unauthorized();
+                //return Unauthorized();
             }
 
             string path = GetFullClipboardDataPath(time);
@@ -102,6 +102,8 @@ namespace LeoMaster6.Controllers
 
             return Json(items);
         }
+
+
 
         private bool CheckHeaderSession()
         {
