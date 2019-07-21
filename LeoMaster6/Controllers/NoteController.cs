@@ -41,8 +41,13 @@ namespace LeoMaster6.Controllers
         }
 
         [HttpPut]
-        public IHttpActionResult Clipboard([FromBody]string data, [FromBody]string uid, [FromBody]DateTime createdAt)
+        public IHttpActionResult Clipboard([FromBody] dynamic putBody)
         {
+            string data = putBody.data;
+            string uid = putBody.uid;
+            //Guid uid2 = putBody.uid;
+            DateTime createdAt = putBody.createdAt;
+
             if (string.IsNullOrEmpty(uid)) throw new ArgumentNullException(nameof(uid));
 
             var parsedUid = Guid.Parse(uid);
@@ -81,11 +86,11 @@ namespace LeoMaster6.Controllers
 
                 AppendNoteToFile(path, newNote);
 
-                return DtoResult.Success(newNote, "Data updated").To(Json);
+                return DtoResultV5.Success(Json, MapToJSNameConvention(newNote), "Data updated");
             }
             else
             {
-                return DtoResult.Fail("The data you want to update may have been deleted").To(Json);
+                return DtoResultV5.Fail(Json, "The data you want to update may have been deleted");
             }
         }
 
@@ -116,7 +121,7 @@ namespace LeoMaster6.Controllers
             });
 
 
-            var jsonObjects = ApplyJSNameConvention(items);
+            var jsonObjects = MapToJSNameConvention(items);
             return DtoResultV5.Success(Json, jsonObjects, "v5");
 
             //following code works only when the entire file is in valid format 
@@ -135,9 +140,10 @@ namespace LeoMaster6.Controllers
 
         //soft delete
         [HttpDelete]
-        public IHttpActionResult Clipboard([FromBody]string uid, string _)
+        public IHttpActionResult Clipboard([FromBody]dynamic deleteBody, string _)
         {
-            DateTime createdAt = DateTime.Now; //todo get this from input
+            string uid = deleteBody.uid;
+            DateTime createdAt = deleteBody.createdAt;
 
             if (string.IsNullOrEmpty(uid)) throw new ArgumentNullException(nameof(uid));
 
@@ -205,32 +211,34 @@ namespace LeoMaster6.Controllers
             return items;
         }
 
-        private static IEnumerable<object> ApplyJSNameConvention(IEnumerable<DtoClipboardItem> items)
+        private static IEnumerable<object> MapToJSNameConvention(IEnumerable<DtoClipboardItem> items)
         {
             if (items?.Count() > 0)
             {
-                return items.Select(i =>
-                {
-                    dynamic jsonObject = new ExpandoObject();
-
-                    jsonObject.uid = i.Uid;
-                    jsonObject.createdBy = i.CreatedBy;
-                    jsonObject.createdAt = i.CreatedAt;
-                    jsonObject.data = i.Data;
-
-                    if (i.HasUpdated == true)
-                    {
-                        jsonObject.hasUpdated = i.HasUpdated;
-                        jsonObject.lastUpdatedBy = i.LastUpdatedBy;
-                        jsonObject.lastUpdatedAt = i.LastUpdatedAt;
-                        jsonObject.parentUid = i.ParentUid;
-                    }
-
-                    return jsonObject;
-                });
+                return items.Select(i => MapToJSNameConvention(i));
             }
 
             return items;
+        }
+
+        private static object MapToJSNameConvention(DtoClipboardItem item)
+        {
+            dynamic trimedObject = new ExpandoObject();
+
+            trimedObject.uid = item.Uid;
+            trimedObject.createdBy = item.CreatedBy;
+            trimedObject.createdAt = item.CreatedAt;
+            trimedObject.data = item.Data;
+
+            if (item.HasUpdated == true)
+            {
+                trimedObject.hasUpdated = item.HasUpdated;
+                trimedObject.lastUpdatedBy = item.LastUpdatedBy;
+                trimedObject.lastUpdatedAt = item.LastUpdatedAt;
+                trimedObject.parentUid = item.ParentUid;
+            }
+
+            return trimedObject;
         }
 
         private bool CheckHeaderSession()
@@ -251,9 +259,9 @@ namespace LeoMaster6.Controllers
         private static string GetFullClipboardDataPath(DateTime time)
         {
             //not the normal week of year, this is too complex to determinate the date boundaries of every portion(file)
-            //return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), "clip-" + (time.DayOfYear / 7 + 1).ToString("D2") + time.ToString("-yyyy-MM") + ".json");
+            //return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), "clip-" + (time.DayOfYear / 7 + 1).ToString("D2") + time.ToString("-yyyyMM") + ".json");
 
-            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), $"{Constants.LskjsonPrefix}note-" + time.ToString("yyyy-MM") + ".txt");
+            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), $"{Constants.LskjsonPrefix}note-" + time.ToString("yyyyMM") + ".txt");
         }
 
         private bool AppendNoteToFile(string path, params DtoClipboardItem[] notes)

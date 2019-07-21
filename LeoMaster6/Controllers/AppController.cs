@@ -98,12 +98,12 @@ namespace LeoMaster6.Controllers
 
         private static string GetFullTitledMessagePath(DateTime time)
         {
-            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), "msg-" + time.ToString("yyyy-MM-dd") + ".txt");
+            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), "msg-" + time.ToString("yyyyMMdd") + ".txt");
         }
 
         private static string GetFullTitledMessageAlterPath(DateTime time)
         {
-            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), "msg-" + time.ToString("yyyy-MM-dd_HH:mm:ss") + ".txt");
+            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), "msg-" + time.ToString("yyyyMMdd-HHmmss") + ".txt");
         }
 
         #endregion
