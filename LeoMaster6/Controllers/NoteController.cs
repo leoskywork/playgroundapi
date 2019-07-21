@@ -138,12 +138,18 @@ namespace LeoMaster6.Controllers
             //}
         }
 
+        public class DeleteBody
+        {
+            public string uid { get; set; }
+            public DateTime createdAt { get; set; }
+        }
+
         //soft delete
         [HttpDelete]
-        public IHttpActionResult Clipboard([FromBody]dynamic deleteBody, string _)
+        public IHttpActionResult Clipboard([FromBody]DeleteBody body)
         {
-            string uid = deleteBody.uid;
-            DateTime createdAt = deleteBody.createdAt;
+            string uid = body.uid;
+            DateTime createdAt = body.createdAt;
 
             if (string.IsNullOrEmpty(uid)) throw new ArgumentNullException(nameof(uid));
 
@@ -164,7 +170,7 @@ namespace LeoMaster6.Controllers
             //need replace a line in the file - seems there is no way to just rewrite one line, have to re-write entire file
             // - https://stackoverflow.com/questions/1971008/edit-a-specific-line-of-a-text-file-in-c-sharp
             // - https://stackoverflow.com/questions/13509532/how-to-find-and-replace-text-in-a-file-with-c-sharp
-            var backupPath = path.Replace(Constants.LskjsonPrefix, Constants.LskjsonPrefix + DateTime.Now.ToString("MMdd-HHmmss"));
+            var backupPath = path.Replace(Constants.LskjsonPrefix, Constants.LskjsonPrefix + DateTime.Now.ToString("dd-HHmmss-"));
             File.Move(path, backupPath);
             var success = AppendNoteToFile(path, notes.ToArray());
 
