@@ -15,10 +15,7 @@ namespace LeoMaster6.Controllers
         [HttpPost]
         public IHttpActionResult Clipboard([FromBody]string data)
         {
-            if (string.IsNullOrEmpty(data))
-            {
-                throw new ArgumentNullException(nameof(data));
-            }
+            if (string.IsNullOrEmpty(data)) throw new ArgumentNullException(nameof(data));
 
             //todo improve this, hard coded as dev session id for now
             if (!CheckHeaderSession())
@@ -40,17 +37,21 @@ namespace LeoMaster6.Controllers
             return DtoResult.Success($"{data.Length} characters saved to clipboard.").To(Json);
         }
 
-        [HttpPut]
-        public IHttpActionResult Clipboard([FromBody] dynamic putBody)
+        public class PutBody
         {
+            public string data { get; set; }
+            public Guid uid { get; set; }
+            public DateTime createdAt { get; set; }
+        }
+
+        [HttpPut]
+        public IHttpActionResult Clipboard([FromBody]PutBody putBody)
+        {
+            if (putBody == null) throw new ArgumentNullException(nameof(putBody));
+
+            Guid uid = putBody.uid;
             string data = putBody.data;
-            string uid = putBody.uid;
-            //Guid uid2 = putBody.uid;
             DateTime createdAt = putBody.createdAt;
-
-            if (string.IsNullOrEmpty(uid)) throw new ArgumentNullException(nameof(uid));
-
-            var parsedUid = Guid.Parse(uid);
 
             //todo improve this, hard coded as dev session id for now
             if (!CheckHeaderSession())
@@ -62,10 +63,11 @@ namespace LeoMaster6.Controllers
             if (!File.Exists(path)) return DtoResultV5.Success(this.Json, "no data");
 
             //perf - O(n) is 2n here, can be optimized to n
-            var notes = ReadLskjson(path, int.MaxValue, 1, (line) => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line));
-            var foundNote = notes.FirstOrDefault(n => n.HasDeleted != true && n.Uid == parsedUid);
-            var foundChild = notes.FirstOrDefault(n => n.HasDeleted != true && n.ParentUid == parsedUid);
+            var notes = ReadLskjson(path, (line) => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line), i => i.HasDeleted != true);
+            var foundNote = notes.FirstOrDefault(n => n.Uid == uid);
+            var foundChild = notes.FirstOrDefault(n => n.ParentUid == uid);
 
+            //ensure the relation is a chain, not a tree
             if (foundChild != null)
             {
                 throw new InvalidOperationException("Data already changed, please reload to latest then edit");
@@ -98,9 +100,9 @@ namespace LeoMaster6.Controllers
         [HttpGet]
         public IHttpActionResult Clipboard()
         {
-            DateTime time = DateTime.Now;
             int pageSize = 50;
-            int pageIndex = 1;
+            int pageIndex = 0;
+            DateTime time = DateTime.Now;
 
             if (!CheckHeaderSession())
             {
@@ -114,18 +116,13 @@ namespace LeoMaster6.Controllers
                 return DtoResultV5.Success(Json, "no data");
             }
 
-
-            var items = ReadLskjson(path, pageSize, pageIndex, (line) =>
-            {
-                return Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line);
-            });
+            var items = ReadLskjson(path, (line) => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line), i => i.HasDeleted != true, pageIndex, pageSize);
 
 
             var jsonObjects = MapToJSNameConvention(items);
             return DtoResultV5.Success(Json, jsonObjects, "v5");
 
-            //following code works only when the entire file is in valid format 
-            //  - which is not the case here
+            //following code works only when the entire file is in valid format - which is not the case here
             //since we just append new line to the file(a proper json array string should quote by '[]' and item separated by ',')
             //  - a workaround for saving is deserialize entire file into a collection, add the new item then save the collection to the file again which is poor performance
             //using (var reader = File.OpenText(GetFullClipboardDataPath(DateTime.MinValue)))     
@@ -133,14 +130,13 @@ namespace LeoMaster6.Controllers
             //{
             //    var serializer = new Newtonsoft.Json.JsonSerializer();
             //    var items = serializer.Deserialize<DtoClipboardItem[]>(jsonReader);
-
             //    return Json(items);
             //}
         }
 
         public class DeleteBody
         {
-            public string uid { get; set; }
+            public Guid uid { get; set; }
             public DateTime createdAt { get; set; }
         }
 
@@ -148,17 +144,18 @@ namespace LeoMaster6.Controllers
         [HttpDelete]
         public IHttpActionResult Clipboard([FromBody]DeleteBody body)
         {
-            string uid = body.uid;
+            if (body == null) throw new ArgumentNullException(nameof(body));
+
+            Guid uid = body.uid;
             DateTime createdAt = body.createdAt;
 
-            if (string.IsNullOrEmpty(uid)) throw new ArgumentNullException(nameof(uid));
 
             string path = GetFullClipboardDataPath(createdAt); //ensure orig item and (soft)deleted item in the same file
 
             if (!File.Exists(path)) return DtoResultV5.Success(Json, "no data");
 
-            var notes = ReadLskjson(path, int.MaxValue, 1, line => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line));
-            var foundNote = notes.FirstOrDefault(n => n.HasDeleted != true && n.Uid == Guid.Parse(uid));
+            var notes = ReadLskjson(path, line => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line), i => i.HasDeleted != true);
+            var foundNote = notes.FirstOrDefault(n => n.Uid == uid);
 
             if (foundNote == null) return DtoResultV5.Success(Json, "already deleted");
 
@@ -189,7 +186,10 @@ namespace LeoMaster6.Controllers
 
         #region helpers
 
-        private static List<T> ReadLskjson<T>(string path, int pageSize, int pageIndex, Func<string, T> mapper)
+        /// <summary>
+        /// Read all lines if pageIndex and pageSize not assigned
+        /// </summary>
+        private static List<T> ReadLskjson<T>(string path, Func<string, T> mapper, Predicate<T> valid = null, int pageIndex = 0, int pageSize = int.MaxValue)
         {
             if (string.IsNullOrEmpty(path)) throw new ArgumentNullException(nameof(path));
             if (mapper == null) throw new ArgumentNullException(nameof(mapper));
@@ -197,18 +197,34 @@ namespace LeoMaster6.Controllers
             //can't read entire file one time, the entire file is not in valid json format(for array)
             //hover every line is a valid json object
             var items = new List<T>();
-            var lineNumber = 0;
+            var validLineNumber = 0;
+            var pageStartIndex = pageSize * pageIndex + 1;
+
             using (var reader = File.OpenText(path))
             {
                 do
                 {
                     //fixme - poor paging mechanism(have to read every line from top), but this is a small project
                     //?? top x lines or top x items? line can be empty, which means no item
-                    lineNumber++;
                     var line = reader.ReadLine();
-                    if (!string.IsNullOrWhiteSpace(line) && lineNumber > pageSize * (pageIndex - 1))
+
+                    if (!string.IsNullOrWhiteSpace(line))
                     {
-                        items.Add(mapper(line));
+                        validLineNumber++;
+
+                        if (validLineNumber >= pageStartIndex)
+                        {
+                            var item = mapper(line);
+
+                            if (valid == null || valid(item))
+                            {
+                                items.Add(mapper(line));
+                            }
+                            else
+                            {
+                                validLineNumber--;
+                            }
+                        }
                     }
                 }
                 while (!reader.EndOfStream && items.Count < pageSize);
