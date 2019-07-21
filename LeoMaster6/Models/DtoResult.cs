@@ -111,4 +111,48 @@ namespace LeoMaster6.Models
 
     }
 
+
+    //new versions(preferred)
+    public static class DtoResultV5
+    {
+        public static IHttpActionResult Success(Func<object, IHttpActionResult> mapper, string message = null)
+        {
+            return Create(mapper, true, message, default(object));
+        }
+
+        public static IHttpActionResult Success<T>(Func<object, IHttpActionResult> mapper, T data = null, string message = null) where T : class
+        {
+            return Create(mapper, true, message, data);
+        }
+
+        public static IHttpActionResult Success<T>(Func<object, IHttpActionResult> mapper, T? data = null, string message = null) where T : struct
+        {
+            return Create(mapper, true, message, data);
+        }
+
+        public static IHttpActionResult Fail(Func<object, IHttpActionResult> mapper, string message = null)
+        {
+            return Create(mapper, false, message, default(object));
+        }
+
+        private static IHttpActionResult Create<T>(Func<object, IHttpActionResult> mapper, bool success, string message, T data)
+        {
+            dynamic result = new ExpandoObject();
+            result.success = success;
+
+            if (!string.IsNullOrEmpty(message))
+            {
+                result.message = message;
+            }
+
+            if (data != null)
+            {
+                result.data = data;
+            }
+
+            return mapper(result);
+        }
+
+    }
+
 }

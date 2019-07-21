@@ -119,7 +119,8 @@ namespace LeoMaster6.Controllers
 
 
             var jsonObjects = ApplyJSNameConvention(items);
-            return DtoResult.Success(jsonObjects).To(Json);
+            //return DtoResult.Success(jsonObjects).To(Json);
+            return DtoResultV5.Success(Json, jsonObjects, "v5");
 
             //following code works only when the entire file is in valid format 
             //  - which is not the case here
