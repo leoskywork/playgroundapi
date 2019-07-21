@@ -36,7 +36,8 @@ namespace LeoMaster6.Controllers
             string path = GetFullClipboardDataPath(DateTime.Now);
             AppendToFile(Newtonsoft.Json.JsonConvert.SerializeObject(item) + Environment.NewLine, path);
 
-            return Json($"{message.Length} characters saved to clipboard.");
+            //return Json($"{message.Length} characters saved to clipboard.");
+            return DtoResult.Success($"{message.Length} characters saved to clipboard.").To(Json);
         }
 
         [HttpPut]
@@ -57,7 +58,7 @@ namespace LeoMaster6.Controllers
 
             var notes = ReadLskJson(path, int.MaxValue, 1, (line) => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line));
             //perf - 2n here, can be optimized to n
-            var foundNote = notes.FirstOrDefault(n =>  n.HasDeleted != true && n.Uid == parsedUid);
+            var foundNote = notes.FirstOrDefault(n => n.HasDeleted != true && n.Uid == parsedUid);
             var foundChild = notes.FirstOrDefault(n => n.HasDeleted != true && n.ParentUid == parsedUid);
 
             if (foundChild != null)
@@ -80,11 +81,13 @@ namespace LeoMaster6.Controllers
 
                 AppendToFile(Newtonsoft.Json.JsonConvert.SerializeObject(newNote) + Environment.NewLine, path);
 
-                return Json(new { found = true, message = "Data updated", data = newNote });
+                //return Json(new { found = true, message = "Data updated", data = newNote });
+                return DtoResult.Success(newNote, "Data updated").To(Json);
             }
             else
             {
-                return Json(new { found = false, message = "The data you try to update may have been deleted" });
+                //return Json(new { found = false, message = "The data you try to update may have been deleted" });
+                return DtoResult.Fail("The data you want to update may have been deleted").To(Json);
             }
         }
 
@@ -105,7 +108,7 @@ namespace LeoMaster6.Controllers
 
             if (!File.Exists(path))
             {
-                return Ok();
+                return DtoResult.Success().To(Json);
             }
 
 
@@ -115,7 +118,8 @@ namespace LeoMaster6.Controllers
             });
 
 
-            return Json(ApplyJSNameConvention(items));
+            var jsonObjects = ApplyJSNameConvention(items);
+            return DtoResult.Success(jsonObjects).To(Json);
 
             //following code works only when the entire file is in valid format 
             //  - which is not the case here
@@ -138,12 +142,12 @@ namespace LeoMaster6.Controllers
 
 
             string path = GetFullClipboardDataPath(date);
-            if (!File.Exists(path)) return Ok();
+            if (!File.Exists(path)) return Json(DtoResultV1.Success());
 
             var notes = ReadLskJson(path, int.MaxValue, 1, line => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line));
             var foundNote = notes.FirstOrDefault(n => n.HasDeleted != true && n.Uid == Guid.Parse(uid));
 
-            if (foundNote == null) return Ok();
+            if (foundNote == null) return Json(DtoResultV1.Success());
 
             //soft delete
             foundNote.HasDeleted = true;
@@ -152,6 +156,8 @@ namespace LeoMaster6.Controllers
             foundNote.DeletedAt = DateTime.Now;
 
             //todo
+
+            return DtoResult.Success($"Deleted item with id {uid}").To(Json);
         }
 
 
@@ -185,7 +191,6 @@ namespace LeoMaster6.Controllers
             return items;
         }
 
-
         private static IEnumerable<object> ApplyJSNameConvention(IEnumerable<DtoClipboardItem> items)
         {
             if (items?.Count() > 0)
@@ -213,7 +218,6 @@ namespace LeoMaster6.Controllers
 
             return items;
         }
-
 
         private bool CheckHeaderSession()
         {
