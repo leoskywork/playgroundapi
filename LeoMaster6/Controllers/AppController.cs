@@ -78,7 +78,7 @@ namespace LeoMaster6.Controllers
             var path = GetFullTitledMessagePath(time);
             var alternate = GetFullTitledMessageAlterPath(time);
 
-            AppendToFile(string.Join(Environment.NewLine, content), path, alternate);
+            AppendToFile(path, string.Join(Environment.NewLine, content), alternate);
 
             return Json($"Your post{(string.IsNullOrWhiteSpace(message.Title) ? "" : " (" + message.Title.Trim() + ")")} is saved.");
 

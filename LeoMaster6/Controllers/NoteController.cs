@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Dynamic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Web.Http;
 
 namespace LeoMaster6.Controllers
@@ -12,11 +13,11 @@ namespace LeoMaster6.Controllers
     public class NoteController : BaseController
     {
         [HttpPost]
-        public IHttpActionResult Clipboard([FromBody]string message)
+        public IHttpActionResult Clipboard([FromBody]string data)
         {
-            if (string.IsNullOrEmpty(message))
+            if (string.IsNullOrEmpty(data))
             {
-                throw new ArgumentNullException(nameof(message));
+                throw new ArgumentNullException(nameof(data));
             }
 
             //todo improve this, hard coded as dev session id for now
@@ -30,18 +31,17 @@ namespace LeoMaster6.Controllers
                 Uid = Guid.NewGuid(),
                 CreatedBy = MapToUserId(Request.Headers.GetValues(Constants.HeaderSessionId).First()),
                 CreatedAt = DateTime.Now,
-                Data = message
+                Data = data
             };
 
             string path = GetFullClipboardDataPath(DateTime.Now);
-            AppendToFile(Newtonsoft.Json.JsonConvert.SerializeObject(item) + Environment.NewLine, path);
+            AppendNoteToFile(path, item);
 
-            //return Json($"{message.Length} characters saved to clipboard.");
-            return DtoResult.Success($"{message.Length} characters saved to clipboard.").To(Json);
+            return DtoResult.Success($"{data.Length} characters saved to clipboard.").To(Json);
         }
 
         [HttpPut]
-        public IHttpActionResult Clipboard([FromBody]string message, [FromBody]string uid, [FromBody]DateTime date)
+        public IHttpActionResult Clipboard([FromBody]string data, [FromBody]string uid, [FromBody]DateTime createdAt)
         {
             if (string.IsNullOrEmpty(uid)) throw new ArgumentNullException(nameof(uid));
 
@@ -53,11 +53,11 @@ namespace LeoMaster6.Controllers
                 //return Unauthorized();
             }
 
-            string path = GetFullClipboardDataPath(date);
-            if (!File.Exists(path)) return Ok();
+            string path = GetFullClipboardDataPath(createdAt); //ensure orig item and updated item in the same file
+            if (!File.Exists(path)) return DtoResultV5.Success(this.Json, "no data");
 
-            var notes = ReadLskJson(path, int.MaxValue, 1, (line) => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line));
-            //perf - 2n here, can be optimized to n
+            //perf - O(n) is 2n here, can be optimized to n
+            var notes = ReadLskjson(path, int.MaxValue, 1, (line) => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line));
             var foundNote = notes.FirstOrDefault(n => n.HasDeleted != true && n.Uid == parsedUid);
             var foundChild = notes.FirstOrDefault(n => n.HasDeleted != true && n.ParentUid == parsedUid);
 
@@ -71,22 +71,20 @@ namespace LeoMaster6.Controllers
                 var newNote = Utility.DeepClone(foundNote);
 
                 newNote.Uid = Guid.NewGuid(); //reset
-                newNote.Data = message;
+                newNote.Data = data;
 
-                newNote.HasUpdated = true;
                 //todo - replace with real UserId(get by session id)
+                newNote.HasUpdated = true;
                 newNote.LastUpdatedBy = Constants.DevUpdateUserId + DateTime.Now.ToString("dd");
                 newNote.LastUpdatedAt = DateTime.Now;
                 newNote.ParentUid = foundNote.Uid;
 
-                AppendToFile(Newtonsoft.Json.JsonConvert.SerializeObject(newNote) + Environment.NewLine, path);
+                AppendNoteToFile(path, newNote);
 
-                //return Json(new { found = true, message = "Data updated", data = newNote });
                 return DtoResult.Success(newNote, "Data updated").To(Json);
             }
             else
             {
-                //return Json(new { found = false, message = "The data you try to update may have been deleted" });
                 return DtoResult.Fail("The data you want to update may have been deleted").To(Json);
             }
         }
@@ -108,18 +106,17 @@ namespace LeoMaster6.Controllers
 
             if (!File.Exists(path))
             {
-                return DtoResult.Success().To(Json);
+                return DtoResultV5.Success(Json, "no data");
             }
 
 
-            var items = ReadLskJson(path, pageSize, pageIndex, (line) =>
+            var items = ReadLskjson(path, pageSize, pageIndex, (line) =>
             {
                 return Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line);
             });
 
 
             var jsonObjects = ApplyJSNameConvention(items);
-            //return DtoResult.Success(jsonObjects).To(Json);
             return DtoResultV5.Success(Json, jsonObjects, "v5");
 
             //following code works only when the entire file is in valid format 
@@ -136,35 +133,51 @@ namespace LeoMaster6.Controllers
             //}
         }
 
+        //soft delete
         [HttpDelete]
-        public IHttpActionResult Clipboard([FromBody] string uid, [FromBody] DateTime date)
+        public IHttpActionResult Clipboard([FromBody]string uid, string _)
         {
+            DateTime createdAt = DateTime.Now; //todo get this from input
+
             if (string.IsNullOrEmpty(uid)) throw new ArgumentNullException(nameof(uid));
 
-            string path = GetFullClipboardDataPath(date);
+            string path = GetFullClipboardDataPath(createdAt); //ensure orig item and (soft)deleted item in the same file
 
-            if (!File.Exists(path)) return DtoResultV5.Success(Json);
+            if (!File.Exists(path)) return DtoResultV5.Success(Json, "no data");
 
-            var notes = ReadLskJson(path, int.MaxValue, 1, line => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line));
+            var notes = ReadLskjson(path, int.MaxValue, 1, line => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line));
             var foundNote = notes.FirstOrDefault(n => n.HasDeleted != true && n.Uid == Guid.Parse(uid));
 
-            if (foundNote == null) return DtoResultV5.Success(Json);
+            if (foundNote == null) return DtoResultV5.Success(Json, "already deleted");
 
-            //soft delete
             foundNote.HasDeleted = true;
             //todo - replace with real UserId(get by session id)
             foundNote.DeletedBy = Constants.DevDeleteUserId + DateTime.Now.ToString("dd");
             foundNote.DeletedAt = DateTime.Now;
 
-            //todo
+            //need replace a line in the file - seems there is no way to just rewrite one line, have to re-write entire file
+            // - https://stackoverflow.com/questions/1971008/edit-a-specific-line-of-a-text-file-in-c-sharp
+            // - https://stackoverflow.com/questions/13509532/how-to-find-and-replace-text-in-a-file-with-c-sharp
+            var backupPath = path.Replace(Constants.LskjsonPrefix, Constants.LskjsonPrefix + DateTime.Now.ToString("MMdd-HHmmss"));
+            File.Move(path, backupPath);
+            var success = AppendNoteToFile(path, notes.ToArray());
 
-            return DtoResultV5.Success(Json, $"Data deleted");
+            if (success)
+            {
+                File.Delete(backupPath);
+                return DtoResultV5.Success(Json, "Data deleted");
+            }
+            else
+            {
+                File.Move(backupPath, path);
+                return DtoResultV5.Fail(Json, "Failed to delete data");
+            }
         }
 
 
         #region helpers
 
-        private static IEnumerable<T> ReadLskJson<T>(string path, int pageSize, int pageIndex, Func<string, T> mapper)
+        private static List<T> ReadLskjson<T>(string path, int pageSize, int pageIndex, Func<string, T> mapper)
         {
             if (string.IsNullOrEmpty(path)) throw new ArgumentNullException(nameof(path));
             if (mapper == null) throw new ArgumentNullException(nameof(mapper));
@@ -240,7 +253,41 @@ namespace LeoMaster6.Controllers
             //not the normal week of year, this is too complex to determinate the date boundaries of every portion(file)
             //return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), "clip-" + (time.DayOfYear / 7 + 1).ToString("D2") + time.ToString("-yyyy-MM") + ".json");
 
-            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), "clip-" + time.ToString("yyyy-MM") + ".json");
+            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), $"{Constants.LskjsonPrefix}note-" + time.ToString("yyyy-MM") + ".txt");
+        }
+
+        private bool AppendNoteToFile(string path, params DtoClipboardItem[] notes)
+        {
+            var builder = new StringBuilder();
+
+            foreach (var note in notes)
+            {
+                dynamic trimedNote = new ExpandoObject();
+                trimedNote.Uid = note.Uid;
+                trimedNote.CreatedBy = note.CreatedBy;
+                trimedNote.CreatedAt = note.CreatedAt;
+                trimedNote.Data = note.Data;
+
+                if (note.HasUpdated == true)
+                {
+                    trimedNote.HasUpdated = note.HasUpdated;
+                    trimedNote.LastUpdatedBy = note.LastUpdatedBy;
+                    trimedNote.LastUpdatedAt = note.LastUpdatedAt;
+                    trimedNote.ParentUid = note.ParentUid;
+                }
+
+                if (note.HasDeleted == true)
+                {
+                    trimedNote.HasDeleted = note.HasDeleted;
+                    trimedNote.DeletedBy = note.DeletedBy;
+                    trimedNote.DeletedAt = note.DeletedAt;
+                }
+
+                builder.Append(Newtonsoft.Json.JsonConvert.SerializeObject(trimedNote));
+                builder.Append(Environment.NewLine);
+            }
+
+            return AppendToFile(path, builder.ToString());
         }
 
         #endregion

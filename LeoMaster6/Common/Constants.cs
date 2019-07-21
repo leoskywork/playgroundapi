@@ -10,5 +10,7 @@ namespace LeoMaster6.Common
         public const string DevDeleteUserId = "u086200";
 
         public const string HeaderSessionId = "lsk-session-id";
+
+        public const string LskjsonPrefix = "lskjson-";
     }
 }

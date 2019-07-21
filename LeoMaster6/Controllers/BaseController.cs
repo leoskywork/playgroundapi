@@ -37,7 +37,7 @@ namespace LeoMaster6.Controllers
             return dir;
         }
 
-        protected void AppendToFile(string content, string path, string alternatePath = null)
+        protected bool AppendToFile(string path, string content, string alternatePath = null)
         {
             if (!Directory.Exists(Path.GetDirectoryName(path)))
             {
@@ -48,7 +48,10 @@ namespace LeoMaster6.Controllers
             {
                 using (var fileWriter = new StreamWriter(File.Create(path)))
                 {
-                    fileWriter.WriteAsync(content);
+                    //fileWriter.WriteAsync(content); //?? async, seems no need to do so
+                    //the block is on server side, not on client side, and we need the return value reliable here
+                    fileWriter.Write(content);
+                    return true;
                 }
             }
             else
@@ -57,7 +60,9 @@ namespace LeoMaster6.Controllers
                 {
                     using (var fileWriter = new StreamWriter(path, true))
                     {
-                        fileWriter.WriteAsync(content);
+                        //fileWriter.WriteAsync(content);
+                        fileWriter.Write(content);
+                        return true;
                     }
                 }
                 catch (Exception ex)
@@ -72,6 +77,8 @@ namespace LeoMaster6.Controllers
                             fileWriter.WriteAsync(content);
                         }
                     }
+
+                    return false;
                 }
             }
         }

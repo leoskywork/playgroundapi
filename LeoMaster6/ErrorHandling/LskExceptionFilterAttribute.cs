@@ -28,7 +28,7 @@ namespace LeoMaster6.ErrorHandling
             }
             else
             {
-                context.Response = new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized)
+                context.Response = new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError)
                 {
                     ReasonPhrase = "Oops! " + context.Exception.Message
                 };
