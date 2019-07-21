@@ -6,6 +6,8 @@ namespace LeoMaster6.Common
         public const string MessageSeparator = "//lsk//";
         public const string DevSessionId = "dev001abc";
         public const string DevUserId = "u086001";
+        public const string DevUpdateUserId = "u086100";
+        public const string DevDeleteUserId = "u086200";
 
         public const string HeaderSessionId = "lsk-session-id";
     }

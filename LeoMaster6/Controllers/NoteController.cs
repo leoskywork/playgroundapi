@@ -28,7 +28,7 @@ namespace LeoMaster6.Controllers
             var item = new DtoClipboardItem()
             {
                 Uid = Guid.NewGuid(),
-                UserId = MapToUserId(Request.Headers.GetValues(Constants.HeaderSessionId).First()),
+                CreatedBy = MapToUserId(Request.Headers.GetValues(Constants.HeaderSessionId).First()),
                 CreatedAt = DateTime.Now,
                 Data = message
             };
@@ -75,7 +75,7 @@ namespace LeoMaster6.Controllers
 
                 newNote.HasUpdated = true;
                 //todo - replace with real UserId(get by session id)
-                newNote.LastUpdatedBy = foundNote.UserId.Substring(0, foundNote.UserId.Length - 2) + DateTime.Now.ToString("dd");
+                newNote.LastUpdatedBy = Constants.DevUpdateUserId + DateTime.Now.ToString("dd");
                 newNote.LastUpdatedAt = DateTime.Now;
                 newNote.ParentUid = foundNote.Uid;
 
@@ -141,24 +141,24 @@ namespace LeoMaster6.Controllers
         {
             if (string.IsNullOrEmpty(uid)) throw new ArgumentNullException(nameof(uid));
 
-
             string path = GetFullClipboardDataPath(date);
-            if (!File.Exists(path)) return Json(DtoResultV1.Success());
+
+            if (!File.Exists(path)) return DtoResultV5.Success(Json);
 
             var notes = ReadLskJson(path, int.MaxValue, 1, line => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line));
             var foundNote = notes.FirstOrDefault(n => n.HasDeleted != true && n.Uid == Guid.Parse(uid));
 
-            if (foundNote == null) return Json(DtoResultV1.Success());
+            if (foundNote == null) return DtoResultV5.Success(Json);
 
             //soft delete
             foundNote.HasDeleted = true;
             //todo - replace with real UserId(get by session id)
-            foundNote.DeletedBy = foundNote.UserId.Substring(0, foundNote.UserId.Length - 2) + DateTime.Now.ToString("dd");
+            foundNote.DeletedBy = Constants.DevDeleteUserId + DateTime.Now.ToString("dd");
             foundNote.DeletedAt = DateTime.Now;
 
             //todo
 
-            return DtoResult.Success($"Deleted item with id {uid}").To(Json);
+            return DtoResultV5.Success(Json, $"Data deleted");
         }
 
 
@@ -201,7 +201,7 @@ namespace LeoMaster6.Controllers
                     dynamic jsonObject = new ExpandoObject();
 
                     jsonObject.uid = i.Uid;
-                    jsonObject.userId = i.UserId;
+                    jsonObject.createdBy = i.CreatedBy;
                     jsonObject.createdAt = i.CreatedAt;
                     jsonObject.data = i.Data;
 

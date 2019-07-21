@@ -12,7 +12,7 @@ namespace LeoMaster6.Models
         //public int Id { get; set; }
 
         public Guid Uid { get; set; } = Guid.Empty;
-        public string UserId { get; set; }
+        public string CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; }
         public string Data { get; set; }
 
