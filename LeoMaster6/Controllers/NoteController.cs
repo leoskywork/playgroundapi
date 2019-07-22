@@ -12,6 +12,19 @@ namespace LeoMaster6.Controllers
 {
     public class NoteController : BaseController
     {
+        public class PutBody
+        {
+            public Guid uid { get; set; }
+            public string data { get; set; }
+            public DateTime createdAt { get; set; }
+        }
+
+        public class DeleteBody
+        {
+            public Guid uid { get; set; }
+            public DateTime createdAt { get; set; }
+        }
+
         [HttpPost]
         public IHttpActionResult Clipboard([FromBody]string data)
         {
@@ -37,12 +50,6 @@ namespace LeoMaster6.Controllers
             return DtoResult.Success($"{data.Length} characters saved to clipboard.").To(Json);
         }
 
-        public class PutBody
-        {
-            public string data { get; set; }
-            public Guid uid { get; set; }
-            public DateTime createdAt { get; set; }
-        }
 
         [HttpPut]
         public IHttpActionResult Clipboard([FromBody]PutBody putBody)
@@ -63,7 +70,7 @@ namespace LeoMaster6.Controllers
             if (!File.Exists(path)) return DtoResultV5.Success(this.Json, "no data");
 
             //perf - O(n) is 2n here, can be optimized to n
-            var notes = ReadLskjson(path, (line) => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line), i => i.HasDeleted != true);
+            var notes = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLine);
             var foundNote = notes.FirstOrDefault(n => n.Uid == uid);
             var foundChild = notes.FirstOrDefault(n => n.ParentUid == uid);
 
@@ -116,7 +123,8 @@ namespace LeoMaster6.Controllers
                 return DtoResultV5.Success(Json, "no data");
             }
 
-            var items = ReadLskjson(path, (line) => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line), i => i.HasDeleted != true, pageIndex, pageSize);
+            var items = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLine, pageIndex, pageSize);
+
 
 
             var jsonObjects = MapToJSNameConvention(items);
@@ -134,11 +142,6 @@ namespace LeoMaster6.Controllers
             //}
         }
 
-        public class DeleteBody
-        {
-            public Guid uid { get; set; }
-            public DateTime createdAt { get; set; }
-        }
 
         //soft delete
         [HttpDelete]
@@ -154,7 +157,7 @@ namespace LeoMaster6.Controllers
 
             if (!File.Exists(path)) return DtoResultV5.Success(Json, "no data");
 
-            var notes = ReadLskjson(path, line => Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(line), i => i.HasDeleted != true);
+            var notes = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLine);
             var foundNote = notes.FirstOrDefault(n => n.Uid == uid);
 
             if (foundNote == null) return DtoResultV5.Success(Json, "already deleted");
@@ -183,22 +186,39 @@ namespace LeoMaster6.Controllers
             }
         }
 
+        private static void CollectLskjsonLine(Dictionary<Guid, DtoClipboardItem> preItems, string currentLine)
+        {
+            var currentItem = Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(currentLine);
+
+            if (currentItem == null) return;
+
+            if (currentItem.HasDeleted != true)
+            {
+                preItems.Add(currentItem.Uid, currentItem);
+            }
+
+            if (currentItem.ParentUid.HasValue && preItems.ContainsKey(currentItem.ParentUid.Value))
+            {
+                preItems.Remove(currentItem.ParentUid.Value);
+            }
+        }
+
 
         #region helpers
 
         /// <summary>
         /// Read all lines if pageIndex and pageSize not assigned
         /// </summary>
-        private static List<T> ReadLskjson<T>(string path, Func<string, T> mapper, Predicate<T> valid = null, int pageIndex = 0, int pageSize = int.MaxValue)
+        private static List<TValue> ReadLskjson<TKey, TValue>(string path, Action<Dictionary<TKey, TValue>, string> collector, int pageIndex = 0, int pageSize = int.MaxValue)
         {
             if (string.IsNullOrEmpty(path)) throw new ArgumentNullException(nameof(path));
-            if (mapper == null) throw new ArgumentNullException(nameof(mapper));
+            if (collector == null) throw new ArgumentNullException(nameof(collector));
 
             //can't read entire file one time, the entire file is not in valid json format(for array)
             //hover every line is a valid json object
-            var items = new List<T>();
-            var validLineNumber = 0;
+            var notEmptyLineNumber = 0;
             var pageStartIndex = pageSize * pageIndex + 1;
+            var items = new Dictionary<TKey, TValue>();
 
             using (var reader = File.OpenText(path))
             {
@@ -210,27 +230,20 @@ namespace LeoMaster6.Controllers
 
                     if (!string.IsNullOrWhiteSpace(line))
                     {
-                        validLineNumber++;
+                        notEmptyLineNumber++;
 
-                        if (validLineNumber >= pageStartIndex)
+                        if (notEmptyLineNumber < pageStartIndex)
                         {
-                            var item = mapper(line);
-
-                            if (valid == null || valid(item))
-                            {
-                                items.Add(mapper(line));
-                            }
-                            else
-                            {
-                                validLineNumber--;
-                            }
+                            continue;
                         }
+
+                        collector?.Invoke(items, line);
                     }
                 }
                 while (!reader.EndOfStream && items.Count < pageSize);
             }
 
-            return items;
+            return items.Values.ToList();
         }
 
         private static IEnumerable<object> MapToJSNameConvention(IEnumerable<DtoClipboardItem> items)

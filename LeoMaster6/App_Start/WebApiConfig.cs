@@ -40,7 +40,8 @@ namespace LeoMaster6
             // can enable CORS at global, controller or action level
 
             // parameter 'origins' - allow those sites to access to resources of current site
-            var cors = new EnableCorsAttribute("http://localhost:4200,http://leoskywork.com:84", "*", "GET,POST");
+            // var cors = new EnableCorsAttribute("http://localhost:4200,http://leoskywork.com:84", "*", "GET,POST");
+            var cors = new EnableCorsAttribute("*", "*", "*");
             config.EnableCors(cors);
         }
 
