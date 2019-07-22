@@ -122,6 +122,7 @@
     <Compile Include="Controllers\NoteController.cs" />
     <Compile Include="ErrorHandling\LskExcepiton.cs" />
     <Compile Include="Models\DtoClipboardItem.cs" />
+    <Compile Include="Models\DtoLskjsonIndex.cs" />
     <Compile Include="Models\DtoPost.cs" />
     <Compile Include="ErrorHandling\ErrorLogger.cs" />
     <Compile Include="ErrorHandling\LskExceptionFilterAttribute.cs" />

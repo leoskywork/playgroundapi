@@ -12,5 +12,7 @@ namespace LeoMaster6.Common
         public const string HeaderSessionId = "lsk-session-id";
 
         public const string LskjsonPrefix = "lskjson-";
+        public const string LskjsonIndexFilePrefix = "lskjson-index-";
+        public const int LskjsonIndexFileAgeInYears = 10;
     }
 }

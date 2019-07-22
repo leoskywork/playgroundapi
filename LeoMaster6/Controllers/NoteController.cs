@@ -16,19 +16,24 @@ namespace LeoMaster6.Controllers
         {
             public Guid uid { get; set; }
             public string data { get; set; }
-            public DateTime createdAt { get; set; }
         }
 
         public class DeleteBody
         {
             public Guid uid { get; set; }
-            public DateTime createdAt { get; set; }
+        }
+
+        public class PostBody
+        {
+            public string data { get; set; }
+            public DateTime? createdAt { get; set; }
         }
 
         [HttpPost]
-        public IHttpActionResult Clipboard([FromBody]string data)
+        public IHttpActionResult Clipboard([FromBody] PostBody body)
         {
-            if (string.IsNullOrEmpty(data)) throw new ArgumentNullException(nameof(data));
+            if (body == null) throw new ArgumentNullException(nameof(body));
+            if (string.IsNullOrEmpty(body.data)) throw new ArgumentNullException(nameof(body.data));
 
             //todo improve this, hard coded as dev session id for now
             if (!CheckHeaderSession())
@@ -36,18 +41,22 @@ namespace LeoMaster6.Controllers
                 //return Unauthorized();
             }
 
+            var time = body.createdAt ?? DateTime.Now;
             var item = new DtoClipboardItem()
             {
                 Uid = Guid.NewGuid(),
                 CreatedBy = MapToUserId(Request.Headers.GetValues(Constants.HeaderSessionId).First()),
-                CreatedAt = DateTime.Now,
-                Data = data
+                CreatedAt = time,
+                Data = body.data
             };
 
-            string path = GetFullClipboardDataPath(DateTime.Now);
+            string path = GetFullClipboardDataPath(time);
             AppendNoteToFile(path, item);
 
-            return DtoResult.Success($"{data.Length} characters saved to clipboard.").To(Json);
+            string indexPath = GetFullClipboardIndexPath(time);
+            AppendObjectToFile(indexPath, DtoLskjsonIndex.From(item));
+
+            return DtoResultV5.Success(Json, $"{body.data.Length} characters saved to clipboard.");
         }
 
 
@@ -56,23 +65,27 @@ namespace LeoMaster6.Controllers
         {
             if (putBody == null) throw new ArgumentNullException(nameof(putBody));
 
-            Guid uid = putBody.uid;
-            string data = putBody.data;
-            DateTime createdAt = putBody.createdAt;
-
             //todo improve this, hard coded as dev session id for now
             if (!CheckHeaderSession())
             {
                 //return Unauthorized();
             }
 
-            string path = GetFullClipboardDataPath(createdAt); //ensure orig item and updated item in the same file
+            var createdAt = GetOriginCreatedAt(putBody.uid);
+
+            if (!createdAt.HasValue)
+            {
+                throw new InvalidOperationException("Data already deleted, please reload to latest then edit");
+            }
+
+            var path = GetFullClipboardDataPath(createdAt.Value); //ensure orig item and updated item in the same file
+
             if (!File.Exists(path)) return DtoResultV5.Success(this.Json, "no data");
 
             //perf - O(n) is 2n here, can be optimized to n
             var notes = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLine);
-            var foundNote = notes.FirstOrDefault(n => n.Uid == uid);
-            var foundChild = notes.FirstOrDefault(n => n.ParentUid == uid);
+            var foundNote = notes.FirstOrDefault(n => n.Uid == putBody.uid);
+            var foundChild = notes.FirstOrDefault(n => n.ParentUid == putBody.uid);
 
             //ensure the relation is a chain, not a tree
             if (foundChild != null)
@@ -85,7 +98,7 @@ namespace LeoMaster6.Controllers
                 var newNote = Utility.DeepClone(foundNote);
 
                 newNote.Uid = Guid.NewGuid(); //reset
-                newNote.Data = data;
+                newNote.Data = putBody.data;
 
                 //todo - replace with real UserId(get by session id)
                 newNote.HasUpdated = true;
@@ -94,6 +107,7 @@ namespace LeoMaster6.Controllers
                 newNote.ParentUid = foundNote.Uid;
 
                 AppendNoteToFile(path, newNote);
+                AppendObjectToFile(GetFullClipboardIndexPath(newNote.CreatedAt), DtoLskjsonIndex.From(newNote));
 
                 return DtoResultV5.Success(Json, MapToJSNameConvention(newNote), "Data updated");
             }
@@ -125,7 +139,7 @@ namespace LeoMaster6.Controllers
 
             var items = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLine, pageIndex, pageSize);
 
-
+            //todo - filter items by lskjson index file??
 
             var jsonObjects = MapToJSNameConvention(items);
             return DtoResultV5.Success(Json, jsonObjects, "v5");
@@ -149,16 +163,19 @@ namespace LeoMaster6.Controllers
         {
             if (body == null) throw new ArgumentNullException(nameof(body));
 
-            Guid uid = body.uid;
-            DateTime createdAt = body.createdAt;
+            var createdAt = GetOriginCreatedAt(body.uid);
 
+            if (!createdAt.HasValue)
+            {
+                return DtoResultV5.Success(Json, "Data already deleted");
+            }
 
-            string path = GetFullClipboardDataPath(createdAt); //ensure orig item and (soft)deleted item in the same file
+            string path = GetFullClipboardDataPath(createdAt.Value); //ensure orig item and (soft)deleted item in the same file
 
             if (!File.Exists(path)) return DtoResultV5.Success(Json, "no data");
 
             var notes = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLine);
-            var foundNote = notes.FirstOrDefault(n => n.Uid == uid);
+            var foundNote = notes.FirstOrDefault(n => n.Uid == body.uid);
 
             if (foundNote == null) return DtoResultV5.Success(Json, "already deleted");
 
@@ -186,6 +203,9 @@ namespace LeoMaster6.Controllers
             }
         }
 
+
+        #region helpers
+
         private static void CollectLskjsonLine(Dictionary<Guid, DtoClipboardItem> preItems, string currentLine)
         {
             var currentItem = Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(currentLine);
@@ -203,8 +223,14 @@ namespace LeoMaster6.Controllers
             }
         }
 
+        private static void CollectLskjsonIndex(Dictionary<Guid, DtoLskjsonIndex> preItems, string currentLine)
+        {
+            var currentItem = Newtonsoft.Json.JsonConvert.DeserializeObject<DtoLskjsonIndex>(currentLine);
 
-        #region helpers
+            if (currentItem == null) return;
+
+            preItems.Add(currentItem.Uid, currentItem);
+        }
 
         /// <summary>
         /// Read all lines if pageIndex and pageSize not assigned
@@ -296,7 +322,12 @@ namespace LeoMaster6.Controllers
             //not the normal week of year, this is too complex to determinate the date boundaries of every portion(file)
             //return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), "clip-" + (time.DayOfYear / 7 + 1).ToString("D2") + time.ToString("-yyyyMM") + ".json");
 
-            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), $"{Constants.LskjsonPrefix}note-" + time.ToString("yyyyMM") + ".txt");
+            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), $"{ Constants.LskjsonPrefix }note-{ time.ToString("yyyyMM") }.txt");
+        }
+
+        private static string GetFullClipboardIndexPath(DateTime time)
+        {
+            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), $"{ Constants.LskjsonIndexFilePrefix }{ time.ToString("yyyy") }.txt");
         }
 
         private bool AppendNoteToFile(string path, params DtoClipboardItem[] notes)
@@ -331,6 +362,42 @@ namespace LeoMaster6.Controllers
             }
 
             return AppendToFile(path, builder.ToString());
+        }
+
+        private bool AppendObjectToFile<T>(string path, params T[] items)
+        {
+            var builder = new StringBuilder();
+
+            foreach (var item in items)
+            {
+                builder.Append(Newtonsoft.Json.JsonConvert.SerializeObject(item));
+                builder.Append(Environment.NewLine);
+            }
+
+            return AppendToFile(path, builder.ToString());
+        }
+
+        private DateTime? GetOriginCreatedAt(Guid uid)
+        {
+            var possibleTime = DateTime.Now;
+
+            for (int i = 0; i < Constants.LskjsonIndexFileAgeInYears; i++)
+            {
+                var indexPath = GetFullClipboardIndexPath(possibleTime.AddYears(-1 * i));
+
+                if (File.Exists(indexPath))
+                {
+                    var indexes = ReadLskjson<Guid, DtoLskjsonIndex>(indexPath, CollectLskjsonIndex);
+                    var found = indexes.FirstOrDefault(lj => lj.Uid == uid);
+
+                    if (found != null)
+                    {
+                        return found.OriginCreatedAt;
+                    }
+                }
+            }
+
+            return null;
         }
 
         #endregion
