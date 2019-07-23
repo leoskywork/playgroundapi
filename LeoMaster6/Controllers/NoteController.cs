@@ -159,8 +159,11 @@ namespace LeoMaster6.Controllers
 
         //soft delete
         [HttpDelete]
-        public IHttpActionResult Clipboard([FromBody]DeleteBody body)
+        public IHttpActionResult Clipboard([FromBody]DeleteBody body)//(string uid)
         {
+            //todo - fixme
+            //var body = new DeleteBody() { uid = Guid.Parse(uid) };
+
             if (body == null) throw new ArgumentNullException(nameof(body));
 
             var createdAt = GetOriginCreatedAt(body.uid);
