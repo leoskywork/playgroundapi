@@ -27,5 +27,10 @@ namespace LeoMaster6.Models
         {
             return new DtoLskjsonIndex(item.Uid, item.CreatedAt);
         }
+
+        public override string ToString()
+        {
+            return $"{this.Uid} {this.OriginCreatedAt} {this.CreatedAt}";
+        }
     }
 }

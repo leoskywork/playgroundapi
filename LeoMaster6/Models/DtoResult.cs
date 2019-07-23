@@ -70,48 +70,6 @@ namespace LeoMaster6.Models
         }
     }
 
-
-
-    //old versions
-    public class DtoResultV1
-    {
-        public static object Success(string message = null)
-        {
-            return new
-            {
-                success = true,
-                message
-            };
-        }
-
-        public static object Success<T>(T data = null, string message = null) where T : class
-        {
-            return new
-            {
-                success = true,
-                data,
-                message
-            };
-        }
-
-        public static object Success<T>(T? data = null, string message = null) where T : struct
-        {
-            return new
-            {
-                success = true,
-                data,
-                message
-            };
-        }
-
-        public static object Fail(string message = null)
-        {
-            return new { success = false, message };
-        }
-
-    }
-
-
     //new versions(preferred)
     public static class DtoResultV5
     {
@@ -154,5 +112,45 @@ namespace LeoMaster6.Models
         }
 
     }
+
+    //old versions
+    public class DtoResultV1
+    {
+        public static object Success(string message = null)
+        {
+            return new
+            {
+                success = true,
+                message
+            };
+        }
+
+        public static object Success<T>(T data = null, string message = null) where T : class
+        {
+            return new
+            {
+                success = true,
+                data,
+                message
+            };
+        }
+
+        public static object Success<T>(T? data = null, string message = null) where T : struct
+        {
+            return new
+            {
+                success = true,
+                data,
+                message
+            };
+        }
+
+        public static object Fail(string message = null)
+        {
+            return new { success = false, message };
+        }
+
+    }
+
 
 }

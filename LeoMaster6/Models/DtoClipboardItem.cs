@@ -24,5 +24,10 @@ namespace LeoMaster6.Models
         public bool? HasDeleted { get; set; }
         public string DeletedBy { get; set; }
         public DateTime? DeletedAt { get; set; }
+
+        public override string ToString()
+        {
+            return $"{this.Uid} - {this.ParentUid} - {this.Data}";
+        }
     }
 }
