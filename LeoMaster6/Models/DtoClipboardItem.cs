@@ -27,7 +27,7 @@ namespace LeoMaster6.Models
 
         public override string ToString()
         {
-            return $"{this.Uid} - {this.ParentUid} - {this.Data}";
+            return $"{this.Uid} [p] {this.ParentUid} [d] {this.Data}";
         }
     }
 }

@@ -1,11 +1,15 @@
-﻿using LeoMaster6.ErrorHandling;
+﻿using LeoMaster6.Common;
+using LeoMaster6.ErrorHandling;
+using LeoMaster6.Models;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Dynamic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Web.Http;
 
 namespace LeoMaster6.Controllers
@@ -82,6 +86,145 @@ namespace LeoMaster6.Controllers
                 }
             }
         }
+
+        protected bool AppendNoteToFile(string path, params DtoClipboardItem[] notes)
+        {
+            var builder = new StringBuilder();
+
+            foreach (var note in notes)
+            {
+                dynamic trimedNote = new ExpandoObject();
+                trimedNote.Uid = note.Uid;
+                trimedNote.CreatedBy = note.CreatedBy;
+                trimedNote.CreatedAt = note.CreatedAt;
+                trimedNote.Data = note.Data;
+
+                if (note.HasUpdated == true)
+                {
+                    trimedNote.HasUpdated = note.HasUpdated;
+                    trimedNote.LastUpdatedBy = note.LastUpdatedBy;
+                    trimedNote.LastUpdatedAt = note.LastUpdatedAt;
+                    trimedNote.ParentUid = note.ParentUid;
+                }
+
+                if (note.HasDeleted == true)
+                {
+                    trimedNote.HasDeleted = note.HasDeleted;
+                    trimedNote.DeletedBy = note.DeletedBy;
+                    trimedNote.DeletedAt = note.DeletedAt;
+                }
+
+                builder.Append(Newtonsoft.Json.JsonConvert.SerializeObject(trimedNote));
+                builder.Append(Environment.NewLine);
+            }
+
+            return AppendToFile(path, builder.ToString());
+        }
+
+        /// <summary>
+        /// Read all lines if pageIndex and pageSize not assigned
+        /// </summary>
+        protected static List<TValue> ReadLskjson<TKey, TValue>(string path, Action<Dictionary<TKey, TValue>, string> collector, int pageIndex = 0, int pageSize = int.MaxValue)
+        {
+            if (string.IsNullOrEmpty(path)) throw new ArgumentNullException(nameof(path));
+            if (collector == null) throw new ArgumentNullException(nameof(collector));
+
+            //can't read entire file one time, the entire file is not in valid json format(for array)
+            //hover every line is a valid json object
+            var notEmptyLineNumber = 0;
+            var pageStartIndex = pageSize * pageIndex + 1;
+            var items = new Dictionary<TKey, TValue>();
+
+            using (var reader = File.OpenText(path))
+            {
+                do
+                {
+                    //fixme - poor paging mechanism(have to read every line from top), but this is a small project
+                    //?? top x lines or top x items? line can be empty, which means no item
+                    var line = reader.ReadLine();
+
+                    if (!string.IsNullOrWhiteSpace(line))
+                    {
+                        notEmptyLineNumber++;
+
+                        if (notEmptyLineNumber < pageStartIndex)
+                        {
+                            continue;
+                        }
+
+                        collector?.Invoke(items, line);
+                    }
+                }
+                while (!reader.EndOfStream && items.Count < pageSize);
+                //while (reader.Peek() >= 0 && items.Count < pageSize);
+            }
+
+            return items.Values.ToList();
+        }
+
+        protected static void CollectLskjsonLine(Dictionary<Guid, DtoClipboardItem> preItems, string currentLine)
+        {
+            var currentItem = Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(currentLine);
+
+            if (currentItem == null) return;
+
+            if (currentItem.HasDeleted != true)
+            {
+                preItems.Add(currentItem.Uid, currentItem);
+            }
+
+            if (currentItem.ParentUid.HasValue && preItems.ContainsKey(currentItem.ParentUid.Value))
+            {
+                preItems.Remove(currentItem.ParentUid.Value);
+            }
+        }
+
+
+        protected static void CollectLskjsonIndex(Dictionary<Guid, DtoLskjsonIndex> preItems, string currentLine)
+        {
+            var currentItem = Newtonsoft.Json.JsonConvert.DeserializeObject<DtoLskjsonIndex>(currentLine);
+
+            if (currentItem == null) return;
+
+            preItems.Add(currentItem.Uid, currentItem);
+        }
+
+        protected DateTime? GetOriginCreatedAt(Guid uid)
+        {
+            var possibleTime = DateTime.Now;
+
+            for (int i = 0; i < Constants.LskjsonIndexFileAgeInYears; i++)
+            {
+                var indexPath = GetFullClipboardIndexPath(possibleTime.AddYears(-1 * i));
+
+                if (File.Exists(indexPath))
+                {
+                    var indexes = ReadLskjson<Guid, DtoLskjsonIndex>(indexPath, CollectLskjsonIndex);
+                    var found = indexes.FirstOrDefault(lj => lj.Uid == uid);
+
+                    if (found != null)
+                    {
+                        return found.OriginCreatedAt;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        protected static string GetFullClipboardDataPath(DateTime time)
+        {
+            //not the normal week of year, this is too complex to determinate the date boundaries of every portion(file)
+            //return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), "clip-" + (time.DayOfYear / 7 + 1).ToString("D2") + time.ToString("-yyyyMM") + ".json");
+
+            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), $"{ Constants.LskjsonPrefix }note-{ time.ToString("yyyyMM") }.txt");
+        }
+
+        protected static string GetFullClipboardIndexPath(DateTime time)
+        {
+            return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), $"{ Constants.LskjsonIndexFilePrefix }{ time.ToString("yyyy") }.txt");
+        }
+
 
         #endregion
     }
