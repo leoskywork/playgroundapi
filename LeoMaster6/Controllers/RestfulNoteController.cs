@@ -16,8 +16,7 @@ namespace LeoMaster6.Controllers
             return Ok("Restful note get success");
         }
 
-        //!! the parameter name must be exactly match 'id' in order to let api call (..../restfulNote/xxx-xyz) work
-        //soft delete
+        //!! the parameter name must match 'id' when use default routing, otherwise api call(.../restfulNote/xxx) will NOT work
         [HttpDelete]
         public IHttpActionResult Clipboard(string id)
         {

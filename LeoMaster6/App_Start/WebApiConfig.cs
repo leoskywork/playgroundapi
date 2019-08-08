@@ -19,11 +19,10 @@ namespace LeoMaster6
             config.Filters.Add(new LskExceptionFilterAttribute());
             config.Services.Add(typeof(IExceptionLogger), new ErrorLogger());
 
-            // Web API routes
-            config.MapHttpAttributeRoutes();
-
             ConfigGlobalCors(config);
 
+            // Web API routes
+            config.MapHttpAttributeRoutes();
             config.Routes.MapHttpRoute(
                 name: "DefaultApi",
                 routeTemplate: "{controller}/{id}",
