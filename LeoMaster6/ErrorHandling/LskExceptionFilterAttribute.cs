@@ -1,4 +1,5 @@
-﻿using System.Net.Http;
+﻿using System;
+using System.Net.Http;
 using System.Web.Http.Filters;
 
 namespace LeoMaster6.ErrorHandling
@@ -23,20 +24,26 @@ namespace LeoMaster6.ErrorHandling
             {
                 context.Response = new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest)
                 {
-                    ReasonPhrase = context.Exception.Message
+                    ReasonPhrase = EnsureSafePhrase(context.Exception.Message)
                 };
             }
             else
             {
                 context.Response = new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError)
                 {
-                    ReasonPhrase = "Oops! " + context.Exception.Message
+                    ReasonPhrase = "Oops! " + EnsureSafePhrase(context.Exception.Message)
                 };
 
                 //?? partial of the error message(Chinese) on postman are gibberish, not sure why
                 //not working
                 //context.Response.Headers.TransferEncoding.Add(new System.Net.Http.Headers.TransferCodingHeaderValue("utf-8"));
             }
+        }
+
+        private static string EnsureSafePhrase(string message)
+        {
+            var newMessage = message.Replace(Environment.NewLine, " -- ");
+            return newMessage.Substring(0, Math.Min(500, newMessage.Length));
         }
     }
 }

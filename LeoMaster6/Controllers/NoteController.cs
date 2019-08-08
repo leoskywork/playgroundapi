@@ -30,7 +30,7 @@ namespace LeoMaster6.Controllers
         }
 
         [HttpPost]
-        public IHttpActionResult Clipboard([FromBody] PostBody body)
+        public IHttpActionResult Clipboard([FromBody]PostBody body)
         {
             if (body == null) throw new ArgumentNullException(nameof(body));
             if (string.IsNullOrEmpty(body.data)) throw new ArgumentNullException(nameof(body.data));
