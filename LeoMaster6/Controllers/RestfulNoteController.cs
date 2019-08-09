@@ -17,9 +17,15 @@ namespace LeoMaster6.Controllers
         }
 
         //!! the parameter name must match 'id' when use default routing, otherwise api call(.../restfulNote/xxx) will NOT work
+        //  - which is because the placeholder variable in the default routing template is {id}, ref WebApiConfig.cs
         [HttpDelete]
         public IHttpActionResult Clipboard(string id)
         {
+            if (!ModelState.IsValid)
+            {
+
+            }
+
             if (id == null) throw new ArgumentNullException(nameof(id));
 
             var uid = Guid.Parse(id);

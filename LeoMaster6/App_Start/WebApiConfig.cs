@@ -21,8 +21,13 @@ namespace LeoMaster6
 
             ConfigGlobalCors(config);
 
-            // Web API routes
+            // Web API routes 
+            //   - enable attribute routing(new in web api 2)
             config.MapHttpAttributeRoutes();
+            //   - convention-based routing
+            //     - match URI to a route template
+            //     - selecting a controller
+            //     - selecting an action
             config.Routes.MapHttpRoute(
                 name: "DefaultApi",
                 routeTemplate: "{controller}/{id}",
