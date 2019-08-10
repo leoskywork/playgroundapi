@@ -225,6 +225,23 @@ namespace LeoMaster6.Controllers
             return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), $"{ Constants.LskjsonIndexFilePrefix }{ time.ToString("yyyy") }.txt");
         }
 
+        protected bool CheckHeaderSession()
+        {
+            return Request.Headers.TryGetValues(Constants.HeaderSessionId, out IEnumerable<string> sessionIds) && sessionIds.FirstOrDefault() == Constants.DevSessionId;
+        }
+
+        protected bool AppendObjectToFile<T>(string path, params T[] items)
+        {
+            var builder = new StringBuilder();
+
+            foreach (var item in items)
+            {
+                builder.Append(Newtonsoft.Json.JsonConvert.SerializeObject(item));
+                builder.Append(Environment.NewLine);
+            }
+
+            return AppendToFile(path, builder.ToString());
+        }
 
         #endregion
     }

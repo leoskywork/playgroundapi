@@ -12,21 +12,18 @@ namespace LeoMaster6.Controllers
 {
     public class NoteController : BaseController
     {
-        public class PutBody
-        {
-            public Guid uid { get; set; }
-            public string data { get; set; }
-        }
-
-        public class DeleteBody
-        {
-            public Guid uid { get; set; }
-        }
 
         public class PostBody
         {
             public string data { get; set; }
             public DateTime? createdAt { get; set; }
+        }
+
+        public class PutBody
+        {
+            //public Guid uid { get; set; }
+            public string uid { get; set; }
+            public string data { get; set; }
         }
 
         [HttpPost]
@@ -60,10 +57,14 @@ namespace LeoMaster6.Controllers
         }
 
 
+        //working on localhost but not on prod???
         [HttpPut]
         public IHttpActionResult Clipboard([FromBody]PutBody putBody)
         {
             if (putBody == null) throw new ArgumentNullException(nameof(putBody));
+            if (putBody.uid == null) throw new ArgumentNullException(nameof(putBody.uid));
+
+            var inputUid = Guid.Parse(putBody.uid);
 
             //todo improve this, hard coded as dev session id for now
             if (!CheckHeaderSession())
@@ -71,7 +72,7 @@ namespace LeoMaster6.Controllers
                 //return Unauthorized();
             }
 
-            var createdAt = GetOriginCreatedAt(putBody.uid);
+            var createdAt = GetOriginCreatedAt(inputUid);
 
             if (!createdAt.HasValue)
             {
@@ -84,8 +85,8 @@ namespace LeoMaster6.Controllers
 
             //perf - O(n) is 2n here, can be optimized to n
             var notes = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLine);
-            var foundNote = notes.FirstOrDefault(n => n.Uid == putBody.uid);
-            var foundChild = notes.FirstOrDefault(n => n.ParentUid == putBody.uid);
+            var foundNote = notes.FirstOrDefault(n => n.Uid == inputUid);
+            var foundChild = notes.FirstOrDefault(n => n.ParentUid == inputUid);
 
             //ensure the relation is a chain, not a tree
             if (foundChild != null)
@@ -158,53 +159,8 @@ namespace LeoMaster6.Controllers
 
 
         //soft delete
-        [HttpDelete]
-        public IHttpActionResult Clipboard([FromBody]DeleteBody body)//(string uid)
-        {
-            //todo - fixme
-            //var body = new DeleteBody() { uid = Guid.Parse(uid) };
-
-            if (body == null) throw new ArgumentNullException(nameof(body));
-
-            var createdAt = GetOriginCreatedAt(body.uid);
-
-            if (!createdAt.HasValue)
-            {
-                return DtoResultV5.Success(Json, "Data already deleted");
-            }
-
-            string path = GetFullClipboardDataPath(createdAt.Value); //ensure orig item and (soft)deleted item in the same file
-
-            if (!File.Exists(path)) return DtoResultV5.Success(Json, "no data");
-
-            var notes = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLine);
-            var foundNote = notes.FirstOrDefault(n => n.Uid == body.uid);
-
-            if (foundNote == null) return DtoResultV5.Success(Json, "already deleted");
-
-            foundNote.HasDeleted = true;
-            //todo - replace with real UserId(get by session id)
-            foundNote.DeletedBy = Constants.DevDeleteUserId + DateTime.Now.ToString("dd");
-            foundNote.DeletedAt = DateTime.Now;
-
-            //need replace a line in the file - seems there is no way to just rewrite one line, have to re-write entire file
-            // - https://stackoverflow.com/questions/1971008/edit-a-specific-line-of-a-text-file-in-c-sharp
-            // - https://stackoverflow.com/questions/13509532/how-to-find-and-replace-text-in-a-file-with-c-sharp
-            var backupPath = path.Replace(Constants.LskjsonPrefix, Constants.LskjsonPrefix + DateTime.Now.ToString("dd-HHmmss-"));
-            File.Move(path, backupPath);
-            var success = AppendNoteToFile(path, notes.ToArray());
-
-            if (success)
-            {
-                File.Delete(backupPath);
-                return DtoResultV5.Success(Json, "Data deleted");
-            }
-            else
-            {
-                File.Move(backupPath, path);
-                return DtoResultV5.Fail(Json, "Failed to delete data");
-            }
-        }
+        //[HttpDelete] // move to RestfulNoteController
+       
 
 
         #region helpers
@@ -239,10 +195,7 @@ namespace LeoMaster6.Controllers
             return trimedObject;
         }
 
-        private bool CheckHeaderSession()
-        {
-            return Request.Headers.TryGetValues(Constants.HeaderSessionId, out IEnumerable<string> sessionIds) && sessionIds.FirstOrDefault() == Constants.DevSessionId;
-        }
+       
 
         private static string MapToUserId(string sessionId)
         {
@@ -254,18 +207,7 @@ namespace LeoMaster6.Controllers
             throw new NotImplementedException();
         }
 
-        private bool AppendObjectToFile<T>(string path, params T[] items)
-        {
-            var builder = new StringBuilder();
-
-            foreach (var item in items)
-            {
-                builder.Append(Newtonsoft.Json.JsonConvert.SerializeObject(item));
-                builder.Append(Environment.NewLine);
-            }
-
-            return AppendToFile(path, builder.ToString());
-        }
+      
 
         #endregion
     }
