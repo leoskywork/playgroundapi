@@ -21,7 +21,7 @@ namespace LeoMaster6.Controllers
             var fileInfo = new FileInfo(assembly.Location);
             var format = "yyyy-MM-dd H:mm:ss";
 
-            return Json($"Asp.NET Api; {string.Join(";", assembly.FullName.Split(',').Take(2))}; Origin Build At {fileInfo.CreationTime.ToString(format)}({fileInfo.CreationTime.Kind}); Last Build At {fileInfo.LastWriteTime.ToString(format)}");
+            return Json($"Asp.NET Api; {string.Join(";", assembly.FullName.Split(',').Take(2))}; Initial Build At {fileInfo.CreationTime.ToString(format)}({fileInfo.CreationTime.Kind}); Last Build At {fileInfo.LastWriteTime.ToString(format)}");
         }
     }
 }
