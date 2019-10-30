@@ -20,8 +20,10 @@ namespace LeoMaster6.Controllers
             var assembly = MethodInfo.GetCurrentMethod().DeclaringType.Assembly;
             var fileInfo = new FileInfo(assembly.Location);
             var format = "yyyy-MM-dd H:mm:ss";
+            var createAt = fileInfo.CreationTime;
+            var lastWrite = fileInfo.LastWriteTime;
 
-            return Json($"Asp.NET Api; {string.Join(";", assembly.FullName.Split(',').Take(2))}; Initial Build At {fileInfo.CreationTime.ToString(format)}({fileInfo.CreationTime.Kind}); Last Build At {fileInfo.LastWriteTime.ToString(format)}");
+            return Json($"Asp.NET api; {string.Join(";", assembly.FullName.Split(',').Take(2))}; Initial build at {createAt.ToString(format)}({createAt.Kind}); Last build at {lastWrite.ToString(format)}({lastWrite.Kind})");
         }
     }
 }

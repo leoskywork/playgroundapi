@@ -43,12 +43,12 @@ namespace LeoMaster6.Controllers
 
             if (!createdAt.HasValue)
             {
-                return DtoResultV5.Success(Json, "Data already deleted");
+                return DtoResultV5.Success(Json, "already deleted");
             }
 
             string path = GetFullClipboardDataPath(createdAt.Value); //ensure orig item and (soft)deleted item in the same file
 
-            if (!File.Exists(path)) return DtoResultV5.Success(Json, "no data");
+            if (!File.Exists(path)) return DtoResultV5.Success(Json, "no data - data source not exist");
 
             var notes = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLine);
             var foundNote = notes.FirstOrDefault(n => n.Uid == uid);
