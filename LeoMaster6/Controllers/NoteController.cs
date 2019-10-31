@@ -15,22 +15,22 @@ namespace LeoMaster6.Controllers
 
         public class PostBody
         {
-            public string data { get; set; }
-            public DateTime? createdAt { get; set; }
+            public string Data { get; set; }
+            public DateTime? CreatedAt { get; set; }
         }
 
         public class PutBody
         {
-            //public Guid uid { get; set; }
-            public string uid { get; set; }
-            public string data { get; set; }
+            //public Guid Uid { get; set; }
+            public string Uid { get; set; }
+            public string Data { get; set; }
         }
 
         [HttpPost]
         public IHttpActionResult Clipboard([FromBody]PostBody body)
         {
             if (body == null) throw new ArgumentNullException(nameof(body));
-            if (string.IsNullOrEmpty(body.data)) throw new ArgumentNullException(nameof(body.data));
+            if (string.IsNullOrEmpty(body.Data)) throw new ArgumentNullException(nameof(body.Data));
 
             //todo improve this, hard coded as dev session id for now
             if (!CheckHeaderSession())
@@ -38,13 +38,13 @@ namespace LeoMaster6.Controllers
                 //return Unauthorized();
             }
 
-            var time = body.createdAt ?? DateTime.Now;
+            var time = body.CreatedAt ?? DateTime.Now;
             var item = new DtoClipboardItem()
             {
                 Uid = Guid.NewGuid(),
                 CreatedBy = MapToUserId(Request.Headers.GetValues(Constants.HeaderSessionId).First()),
                 CreatedAt = time,
-                Data = body.data
+                Data = body.Data
             };
 
             string path = GetFullClipboardDataPath(time);
@@ -53,7 +53,7 @@ namespace LeoMaster6.Controllers
             string indexPath = GetFullClipboardIndexPath(time);
             AppendObjectToFile(indexPath, DtoLskjsonIndex.From(item));
 
-            return DtoResultV5.Success(Json, $"{body.data.Length} characters saved to clipboard.");
+            return DtoResultV5.Success(Json, $"{body.Data.Length} characters saved to clipboard.");
         }
 
 
@@ -62,9 +62,9 @@ namespace LeoMaster6.Controllers
         public IHttpActionResult Clipboard([FromBody]PutBody putBody)
         {
             if (putBody == null) throw new ArgumentNullException(nameof(putBody));
-            if (putBody.uid == null) throw new ArgumentNullException(nameof(putBody.uid));
+            if (putBody.Uid == null) throw new ArgumentNullException(nameof(putBody.Uid));
 
-            var inputUid = Guid.Parse(putBody.uid);
+            var inputUid = Guid.Parse(putBody.Uid);
 
             //todo improve this, hard coded as dev session id for now
             if (!CheckHeaderSession())
@@ -99,7 +99,7 @@ namespace LeoMaster6.Controllers
                 var newNote = Utility.DeepClone(foundNote);
 
                 newNote.Uid = Guid.NewGuid(); //reset
-                newNote.Data = putBody.data;
+                newNote.Data = putBody.Data;
 
                 //todo - replace with real UserId(get by session id)
                 newNote.HasUpdated = true;
@@ -110,7 +110,8 @@ namespace LeoMaster6.Controllers
                 AppendNoteToFile(path, newNote);
                 AppendObjectToFile(GetFullClipboardIndexPath(newNote.CreatedAt), DtoLskjsonIndex.From(newNote));
 
-                return DtoResultV5.Success(Json, MapToJSNameConvention(newNote), "Data updated");
+                //return DtoResultV5.Success(Json, MapToJSNameConvention(newNote), "Data updated");
+                return DtoResultV5.Success(Json, newNote, "Data updated"); //do the map on client side
             }
             else
             {
@@ -142,7 +143,8 @@ namespace LeoMaster6.Controllers
 
             //todo - filter items by lskjson index file??
 
-            var jsonObjects = MapToJSNameConvention(items);
+            //var jsonObjects = MapToJSNameConvention(items);
+            var jsonObjects = items; //do the mapping on client side
             return DtoResultV5.Success(Json, jsonObjects, "v5");
 
             //following code works only when the entire file is in valid format - which is not the case here
@@ -167,7 +169,7 @@ namespace LeoMaster6.Controllers
 
         private static IEnumerable<object> MapToJSNameConvention(IEnumerable<DtoClipboardItem> items)
         {
-            if (items?.Count() > 0)
+            if (items != null && items.Any())
             {
                 return items.Select(i => MapToJSNameConvention(i));
             }
@@ -194,8 +196,6 @@ namespace LeoMaster6.Controllers
 
             return trimedObject;
         }
-
-       
 
         private static string MapToUserId(string sessionId)
         {

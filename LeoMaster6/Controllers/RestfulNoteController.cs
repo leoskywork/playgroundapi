@@ -15,7 +15,7 @@ namespace LeoMaster6.Controllers
 
         public class PutBody
         {
-            public string data { get; set; }
+            public string Data { get; set; }
         }
 
         [Route("")]
@@ -131,7 +131,7 @@ namespace LeoMaster6.Controllers
             }
         }
 
-        //PUT v2/note/xxx-xyz { "data": "xxx new data" }
+        //PUT v2/note/xxx-xyz { "Data": "xxx new data" }
         [HttpPut]
         [Route("{id:guid}")]
         public IHttpActionResult Clipboard(string id, [FromBody]PutBody putBody)
@@ -174,7 +174,7 @@ namespace LeoMaster6.Controllers
                 var newNote = Utility.DeepClone(foundNote);
 
                 newNote.Uid = Guid.NewGuid(); //reset
-                newNote.Data = putBody.data;
+                newNote.Data = putBody.Data;
 
                 //todo - replace with real UserId(get by session id)
                 newNote.HasUpdated = true;
