@@ -142,20 +142,25 @@ namespace LeoMaster6.Controllers
             var items = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLine, pageIndex, pageSize);
 
             //read all files created this year and till the month of passed in time
-            var oldFileTime = new DateTime(time.Year, 1, 1);
-            var endFileTime = new DateTime(time.Year, time.Month, 1);
+            var oldFileTime = new DateTime(time.Year, time.Month, 1);
+            var endFileTime = new DateTime(time.Year, 1, 1);
 
-            while(oldFileTime < endFileTime)
+            while (oldFileTime > endFileTime)
             {
+                oldFileTime = oldFileTime.AddMonths(-1);
                 var oldFilePath = GetFullClipboardDataPath(oldFileTime);
 
                 if (File.Exists(oldFilePath))
                 {
                     var oldData = ReadLskjson<Guid, DtoClipboardItem>(oldFilePath, CollectLskjsonLine, 0, int.MaxValue);
-                    items.AddRange(oldData);
-                }
+                    var numberOfDataToAdd = Constants.LskMaxReturnNoteCount - items.Count;
+                    items.AddRange(oldData.Take(Math.Min(numberOfDataToAdd, oldData.Count)));
 
-                oldFileTime = oldFileTime.AddMonths(1);
+                    if (items.Count >= Constants.LskMaxReturnNoteCount)
+                    {
+                        break;
+                    }
+                }
             }
 
 
