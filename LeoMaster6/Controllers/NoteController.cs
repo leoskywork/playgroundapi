@@ -141,6 +141,24 @@ namespace LeoMaster6.Controllers
 
             var items = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLine, pageIndex, pageSize);
 
+            //read all files created this year and till the month of passed in time
+            var oldFileTime = new DateTime(time.Year, 1, 1);
+            var endFileTime = new DateTime(time.Year, time.Month, 1);
+
+            while(oldFileTime < endFileTime)
+            {
+                var oldFilePath = GetFullClipboardDataPath(oldFileTime);
+
+                if (File.Exists(oldFilePath))
+                {
+                    var oldData = ReadLskjson<Guid, DtoClipboardItem>(oldFilePath, CollectLskjsonLine, 0, int.MaxValue);
+                    items.AddRange(oldData);
+                }
+
+                oldFileTime = oldFileTime.AddMonths(1);
+            }
+
+
             //todo - filter items by lskjson index file??
 
             //var jsonObjects = MapToJSNameConvention(items);
