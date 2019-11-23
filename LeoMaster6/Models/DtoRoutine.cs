@@ -13,8 +13,8 @@ namespace LeoMaster6.Models
     {
         public Guid Uid { get; set; }
         public string Name { get; set; }
-        public DateTime? LastFulfil { get; set; }
-        public DateTime[] HistoryFulfilments { get; set; } 
+        public DateTime? LastFulfill { get; set; }
+        public DateTime[] HistoryFulfillments { get; set; } 
 
         //optional fields
         public string CreateBy { get; set; }
@@ -23,7 +23,7 @@ namespace LeoMaster6.Models
 
         public override string ToString()
         {
-            return $"{Name}_{LastFulfil?.ToString()}_{Uid}_{CreateBy}";
+            return $"{Name}_{LastFulfill?.ToString()}_{Uid}_{CreateBy}";
         }
 
         public static DtoRoutine From(RoutineFulfillment fulfill)
@@ -32,8 +32,8 @@ namespace LeoMaster6.Models
             {
                 Uid = fulfill.Uid,
                 Name = fulfill.Name,
-                LastFulfil = fulfill.LastFulfil,
-                HistoryFulfilments = fulfill.HistoryFulfilments,
+                LastFulfill = fulfill.LastFulfill,
+                HistoryFulfillments = fulfill.HistoryFulfillments,
                 CreateAt = fulfill.CreateAt,
                 CreateBy = fulfill.CreateBy
             };
@@ -45,8 +45,8 @@ namespace LeoMaster6.Models
     {
         public Guid Uid { get; set; }
         public string Name { get; set; }
-        public DateTime? LastFulfil { get; set; }
-        public DateTime[] HistoryFulfilments { get; set; }
+        public DateTime? LastFulfill { get; set; }
+        public DateTime[] HistoryFulfillments { get; set; }
 
         //optional fields
         public string CreateBy { get; set; }
@@ -80,7 +80,7 @@ namespace LeoMaster6.Models
 
         public override string ToString()
         {
-            return $"{Name}_{LastFulfil?.ToString()}_{Uid}_{CreateBy}";
+            return $"{Name}_{LastFulfill?.ToString()}_{Uid}_{CreateBy}";
         }
     }
 

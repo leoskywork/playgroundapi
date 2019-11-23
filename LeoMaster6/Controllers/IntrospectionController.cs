@@ -84,21 +84,21 @@ namespace LeoMaster6.Controllers
 
             var offsetDays = int.Parse(antiSpamResult.Message);
 
-            if (fulfill.LastFulfil.HasValue)
+            if (fulfill.LastFulfill.HasValue)
             {
-                if (fulfill.HistoryFulfilments == null || !fulfill.HistoryFulfilments.Any())
+                if (fulfill.HistoryFulfillments == null || !fulfill.HistoryFulfillments.Any())
                 {
-                    fulfill.HistoryFulfilments = new[] { fulfill.LastFulfil.Value };
+                    fulfill.HistoryFulfillments = new[] { fulfill.LastFulfill.Value };
                 }
                 else
                 {
-                    var history = fulfill.HistoryFulfilments.ToList();
-                    history.Add(fulfill.LastFulfil.Value);
-                    fulfill.HistoryFulfilments = history.ToArray();
+                    var history = fulfill.HistoryFulfillments.ToList();
+                    history.Add(fulfill.LastFulfill.Value);
+                    fulfill.HistoryFulfillments = history.ToArray();
                 }
             }
 
-            fulfill.LastFulfil = DateTime.Now.AddDays(-1 * Math.Abs(offsetDays));
+            fulfill.LastFulfill = DateTime.Now.AddDays(-1 * Math.Abs(offsetDays));
             fulfill.UpdateBy = "fixme-update";
             fulfill.UpdateAt = DateTime.Now;
 
@@ -135,13 +135,14 @@ namespace LeoMaster6.Controllers
             {
                 var firstPass = passcodes?.FirstOrDefault() ?? string.Empty;
 
-                if (firstPass.Length < 6) return ValidationResult.Fail("config missing or incorrect");
+                if (firstPass.Length < 10) return ValidationResult.Fail("config missing or incorrect");
 
                 var offsetLength = 2;
-                var offsetString = firstPass.Substring(firstPass.Length - offsetLength, offsetLength);
-                var passcode = firstPass.Substring(0, firstPass.Length - offsetLength);
+                var offsetString = firstPass.Substring(4, offsetLength);
+                var passcode = firstPass.Substring(0, 4);
+                var passcodeSuffix = firstPass.Substring(6);
 
-                if (!int.TryParse(offsetString, out int _)) return ValidationResult.Fail("fail to parse offset value");
+                if (!int.TryParse(offsetString, out int _)) return ValidationResult.Fail("fail to parse value");
 
                 if (FileSizeGreaterThan(fulfilmentPath, maxSizeInKB)) return ValidationResult.Fail("insufficient fulfillment storage");
 
@@ -151,7 +152,13 @@ namespace LeoMaster6.Controllers
                 var passcodeLine = lines.FirstOrDefault(l => !string.IsNullOrEmpty(l));
                 if (string.IsNullOrEmpty(passcodeLine)) return ValidationResult.Fail("internal server error - not fully initialized");
 
-                if (passcode != passcodeLine) return ValidationResult.Fail("!spam!");
+                var now = DateTime.Now.ToString("hhmm");
+                var hash = (int.Parse(now[1].ToString()) + int.Parse(now[2].ToString())) % 10;
+
+                if (hash != int.Parse(passcode[0].ToString())) return ValidationResult.Fail("!spam!");
+                if (Math.Abs(int.Parse(now[3].ToString()) - int.Parse(firstPass.Last().ToString())) > 3) return ValidationResult.Fail("!spam!");
+                if (!passcodeSuffix.Contains(passcodeLine.Substring(0, 2))) return ValidationResult.Fail("!spam!");
+                if (!passcodeSuffix.Contains(passcodeLine.Substring(2, 2))) return ValidationResult.Fail("!spam!");
 
                 return ValidationResult.Success(offsetString);
             }
