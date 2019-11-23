@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Web;
 
 namespace LeoMaster6.Models.Helpers
@@ -16,6 +17,7 @@ namespace LeoMaster6.Models.Helpers
             get { return DateTime.UtcNow - InitAt; }
         }
 
+        //TODO, use stopwatch to increase accuracy
         public DateTime? Checkpoint { get; set; }
         public List<DateTime> HistoryCheckpoints { get; set; } = new List<DateTime>();
         private bool _ending = false;
@@ -31,9 +33,9 @@ namespace LeoMaster6.Models.Helpers
             var last = this.Checkpoint;
             this.Checkpoint = DateTime.UtcNow;
             var thread = System.Threading.Thread.CurrentThread.ManagedThreadId;
-            var msg = $"[{thread}] {Source}{(stage != null ? "_" + stage : "")}, since last: {(last.HasValue ? (Checkpoint.Value - last.Value).ToString() : "")}";
+            var msg = $"[{thread}] {Source} [{stage}], since last: {(last.HasValue ? (Checkpoint.Value - last.Value).ToString() : "")}";
 
-            System.Threading.ThreadPool.QueueUserWorkItem((_) =>
+            Task.Run(() =>
             {
                 if (!this._ending)
                 {
@@ -56,7 +58,7 @@ namespace LeoMaster6.Models.Helpers
 
             if (showHistory)
             {
-                System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+                Task.Run(() =>
                 {
                     //TODO
                     Debug.WriteLine($"perf-----> history count {this.HistoryCheckpoints.Count}");

@@ -51,10 +51,10 @@ namespace LeoMaster6.Controllers
             SyncRoutine(fulfillmentPath);
             perf.Check("sync routine end");
 
-            var fulfillments = ReadLskjson<Guid, DtoRoutine>(fulfillmentPath, CollectLskjsonLineDefault);
+            var fulfillments = ReadLskjson<Guid, RoutineFulfillment>(fulfillmentPath, CollectLskjsonLineDefault);
             perf.End("read fulfillment end", true);
 
-            return DtoResultV5.Success(Json, fulfillments);
+            return DtoResultV5.Success(Json, fulfillments.Select(f => DtoRoutine.From(f)));
         }
 
         [HttpPut]
@@ -76,7 +76,7 @@ namespace LeoMaster6.Controllers
             SyncRoutine(fulfillmentPath);
             perf.Check("sync routine end");
 
-            var fulfillments = ReadLskjson<Guid, DtoRoutine>(fulfillmentPath, CollectLskjsonLineDefault);
+            var fulfillments = ReadLskjson<Guid, RoutineFulfillment>(fulfillmentPath, CollectLskjsonLineDefault);
             perf.Check("read fulfillment end");
 
             var fulfill = fulfillments.FirstOrDefault(f => f.Uid == inputUid);
@@ -104,7 +104,7 @@ namespace LeoMaster6.Controllers
 
             WriteToFile(fulfillmentPath, fulfillments);
             perf.End("override fulfill end", true);
-            return DtoResultV5.Success(Json, fulfill);
+            return DtoResultV5.Success(Json, DtoRoutine.From(fulfill));
         }
 
         //----- helpers
@@ -173,7 +173,7 @@ namespace LeoMaster6.Controllers
 
             if (!File.Exists(fulfillmentPath)) using (File.Create(fulfillmentPath)) { };
 
-            var fulfillments = ReadLskjson<Guid, DtoRoutine>(fulfillmentPath, CollectLskjsonLineDefault);
+            var fulfillments = ReadLskjson<Guid, RoutineFulfillment>(fulfillmentPath, CollectLskjsonLineDefault);
             var foundFulfillments = new HashSet<string>();
 
             //remove obsoleted
@@ -182,6 +182,8 @@ namespace LeoMaster6.Controllers
                 if (string.IsNullOrWhiteSpace(fulfill.Name))
                 {
                     fulfill.IsDeleted = true;
+                    fulfill.DeletedBy = "fixme-del";
+                    fulfill.DeleteAt = DateTime.Now;
                     continue;
                 }
 
@@ -192,6 +194,8 @@ namespace LeoMaster6.Controllers
                 else
                 {
                     fulfill.IsDeleted = true; //set flag to remove obsoleted
+                    fulfill.DeletedBy = "fixme-del2";
+                    fulfill.DeleteAt = DateTime.Now;
                 }
             }
 
@@ -200,7 +204,7 @@ namespace LeoMaster6.Controllers
             {
                 if (!foundFulfillments.Contains(kvp.Key))
                 {
-                    fulfillments.Add(new DtoRoutine()
+                    fulfillments.Add(new RoutineFulfillment()
                     {
                         Uid = Guid.NewGuid(),
                         Name = kvp.Value[0],
