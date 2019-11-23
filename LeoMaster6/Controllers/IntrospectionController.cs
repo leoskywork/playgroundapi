@@ -140,7 +140,7 @@ namespace LeoMaster6.Controllers
                 var offsetLength = 2;
                 var offsetString = firstPass.Substring(4, offsetLength);
                 var passcode = firstPass.Substring(0, 4);
-                var passcodeSuffix = firstPass.Substring(6);
+                var passcodeSuffix = firstPass.Substring(6, Math.Min(26, firstPass.Length - 6));
 
                 if (!int.TryParse(offsetString, out int _)) return ValidationResult.Fail("fail to parse value");
 
