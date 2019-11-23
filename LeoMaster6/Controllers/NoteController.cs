@@ -84,7 +84,7 @@ namespace LeoMaster6.Controllers
             if (!File.Exists(path)) return DtoResultV5.Success(this.Json, "no data");
 
             //perf - O(n) is 2n here, can be optimized to n
-            var notes = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLine);
+            var notes = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLineClipboard);
             var foundNote = notes.FirstOrDefault(n => n.Uid == inputUid);
             var foundChild = notes.FirstOrDefault(n => n.ParentUid == inputUid);
 
@@ -139,7 +139,7 @@ namespace LeoMaster6.Controllers
                 return DtoResultV5.Success(Json, "no data");
             }
 
-            var items = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLine, pageIndex, pageSize);
+            var items = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLineClipboard, pageIndex, pageSize);
 
             //read all files created this year and till the month of passed in time
             var oldFileTime = new DateTime(time.Year, time.Month, 1);
@@ -152,7 +152,7 @@ namespace LeoMaster6.Controllers
 
                 if (File.Exists(oldFilePath))
                 {
-                    var oldData = ReadLskjson<Guid, DtoClipboardItem>(oldFilePath, CollectLskjsonLine, 0, int.MaxValue);
+                    var oldData = ReadLskjson<Guid, DtoClipboardItem>(oldFilePath, CollectLskjsonLineClipboard, 0, int.MaxValue);
                     var numberOfDataToAdd = Constants.LskMaxReturnNoteCount - items.Count;
                     items.AddRange(oldData.Take(Math.Min(numberOfDataToAdd, oldData.Count)));
 

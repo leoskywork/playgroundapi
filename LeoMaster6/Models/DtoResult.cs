@@ -88,9 +88,20 @@ namespace LeoMaster6.Models
             return Create(mapper, true, message, data);
         }
 
+        /// <summary>
+        /// Deprecated: use the overloads. should set the status code to error codes, i.e 4xx, 5xx
+        /// </summary>
         public static IHttpActionResult Fail(Func<object, IHttpActionResult> mapper, string message = null)
         {
             return Create(mapper, false, message, default(object));
+        }
+
+        public static IHttpActionResult Fail(Func<string, IHttpActionResult> mapper, string message = null)
+        {
+            //TODO: test this, what does it look like for ExpandoObject.ToString()? is it returns all properties?
+            IHttpActionResult wrapper(object input) => mapper(input is string ? (string)input : Newtonsoft.Json.JsonConvert.SerializeObject(input));
+
+            return Create(wrapper, false, message, default(object));
         }
 
         private static IHttpActionResult Create<T>(Func<object, IHttpActionResult> mapper, bool success, string message, T data)

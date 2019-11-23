@@ -27,6 +27,7 @@ namespace LeoMaster6.Controllers
         //!! the parameter name must match 'id' when use default routing, otherwise api call(.../restfulNote/xxx) will NOT work
         //  - which is because the placeholder variable in the default routing template is {id}, ref WebApiConfig.cs
         //match by route attribute: DELETE v2/note/xxx-xyz
+        //  - once you set [Route] you must also set [RoutePrefix] on the class, and use them combined
         [HttpDelete]
         [Route("{id:guid}")]
         public IHttpActionResult Clipboard(string id)
@@ -50,7 +51,7 @@ namespace LeoMaster6.Controllers
 
             if (!File.Exists(path)) return DtoResultV5.Success(Json, "no data - data source not exist");
 
-            var notes = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLine);
+            var notes = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLineClipboard);
             var foundNote = notes.FirstOrDefault(n => n.Uid == uid);
 
             if (foundNote == null) return DtoResultV5.Success(Json, "already deleted");
@@ -102,7 +103,7 @@ namespace LeoMaster6.Controllers
 
             if (!File.Exists(path)) return DtoResultV5.Success(Json, "no data");
 
-            var notes = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLine);
+            var notes = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLineClipboard);
             var foundNote = notes.FirstOrDefault(n => n.Uid == uid);
 
             if (foundNote == null) return DtoResultV5.Success(Json, "already deleted");
@@ -159,7 +160,7 @@ namespace LeoMaster6.Controllers
             if (!File.Exists(path)) return DtoResultV5.Success(this.Json, "no data");
 
             //perf - O(n) is 2n here, can be optimized to n
-            var notes = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLine);
+            var notes = ReadLskjson<Guid, DtoClipboardItem>(path, CollectLskjsonLineClipboard);
             var foundNote = notes.FirstOrDefault(n => n.Uid == inputUid);
             var foundChild = notes.FirstOrDefault(n => n.ParentUid == inputUid);
 

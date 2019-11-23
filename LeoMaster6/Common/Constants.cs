@@ -13,7 +13,9 @@ namespace LeoMaster6.Common
 
         public const string LskjsonPrefix = "lskjson-";
         public const string LskjsonIndexFilePrefix = "lskjson-index-";
+        public const string LsktextPrefix = "lsktxt-";
         public const int LskjsonIndexFileAgeInYears = 10;
         public const int LskMaxReturnNoteCount = 50;
+        public const int LskMaxDBFileSizeKB = 5 * 1024;
     }
 }

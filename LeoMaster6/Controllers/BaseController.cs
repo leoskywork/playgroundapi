@@ -162,7 +162,7 @@ namespace LeoMaster6.Controllers
             return items.Values.ToList();
         }
 
-        protected static void CollectLskjsonLine(Dictionary<Guid, DtoClipboardItem> preItems, string currentLine)
+        protected static void CollectLskjsonLineClipboard(Dictionary<Guid, DtoClipboardItem> preItems, string currentLine)
         {
             var currentItem = Newtonsoft.Json.JsonConvert.DeserializeObject<DtoClipboardItem>(currentLine);
 
@@ -177,6 +177,17 @@ namespace LeoMaster6.Controllers
             {
                 preItems.Remove(currentItem.ParentUid.Value);
             }
+        }
+
+        protected static void CollectLskjsonLineDefault<T>(Dictionary<Guid, T> preItems, string currentLine) where T: ILskjsonLine
+        {
+            if (string.IsNullOrWhiteSpace(currentLine)) return;
+
+            var currentItem = Newtonsoft.Json.JsonConvert.DeserializeObject<T>(currentLine);
+
+            if (currentItem == null || currentItem.IsDeleted == true) return;
+
+            preItems.Add(currentItem.Uid, currentItem);
         }
 
 
@@ -241,6 +252,24 @@ namespace LeoMaster6.Controllers
             }
 
             return AppendToFile(path, builder.ToString());
+        }
+
+        protected void WriteToFile<T>(string path, IEnumerable<T> items)
+        {
+            var builder = new StringBuilder();
+
+            foreach (var item in items)
+            {
+                builder.Append(Newtonsoft.Json.JsonConvert.SerializeObject(item));
+                builder.Append(Environment.NewLine);
+            }
+
+            if (!Directory.Exists(Path.GetDirectoryName(path)))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+            }
+
+            File.WriteAllText(path, builder.ToString());
         }
 
         #endregion
