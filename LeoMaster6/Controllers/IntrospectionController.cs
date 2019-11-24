@@ -140,7 +140,7 @@ namespace LeoMaster6.Controllers
                 var offsetLength = 2;
                 var offsetString = firstPass.Substring(4, offsetLength);
                 var passcode = firstPass.Substring(0, 4);
-                var passcodeSuffix = firstPass.Substring(6, Math.Min(26, firstPass.Length - 6));
+                var passcodeSuffix = firstPass.Substring(6, Math.Min(Constants.LskMaxPasscodeLength, firstPass.Length - 6));
 
                 if (!int.TryParse(offsetString, out int _)) return ValidationResult.Fail("fail to parse value");
 
@@ -157,8 +157,16 @@ namespace LeoMaster6.Controllers
 
                 if (hash != int.Parse(passcode[0].ToString())) return ValidationResult.Fail("!spam!");
                 if (Math.Abs(int.Parse(now[3].ToString()) - int.Parse(firstPass.Last().ToString())) > 3) return ValidationResult.Fail("!spam!");
-                if (!passcodeSuffix.Contains(passcodeLine.Substring(0, 2))) return ValidationResult.Fail("!spam!");
-                if (!passcodeSuffix.Contains(passcodeLine.Substring(2, 2))) return ValidationResult.Fail("!spam!");
+
+                var length = passcodeLine.Length;
+                while (length >= 0)
+                {
+                    var unit = Math.Min(2, length);
+                    var startIndex = passcodeLine.Length - length;
+
+                    if (!passcodeSuffix.Contains(passcodeLine.Substring(startIndex, unit))) return ValidationResult.Fail("!spam!");
+                    length -= 2;
+                }
 
                 return ValidationResult.Success(offsetString);
             }

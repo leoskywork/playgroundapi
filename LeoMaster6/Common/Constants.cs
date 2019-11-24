@@ -17,5 +17,6 @@ namespace LeoMaster6.Common
         public const int LskjsonIndexFileAgeInYears = 10;
         public const int LskMaxReturnNoteCount = 50;
         public const int LskMaxDBFileSizeKB = 5 * 1024;
+        public const int LskMaxPasscodeLength = 128;
     }
 }
