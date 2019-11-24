@@ -152,7 +152,7 @@ namespace LeoMaster6.Controllers
                 var passcodeLine = lines.FirstOrDefault(l => !string.IsNullOrEmpty(l));
                 if (string.IsNullOrEmpty(passcodeLine)) return ValidationResult.Fail("internal server error - not fully initialized");
 
-                var now = DateTime.Now.ToString("hhmm");
+                var now = DateTime.Now.ToString("HHmm");
                 var hash = (int.Parse(now[1].ToString()) + int.Parse(now[2].ToString())) % 10;
 
                 if (hash != int.Parse(passcode[0].ToString())) return ValidationResult.Fail("!spam!");
