@@ -2,6 +2,7 @@
 using LeoMaster6.ErrorHandling;
 using LeoMaster6.Models;
 using LeoMaster6.Models.Helpers;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,12 +15,18 @@ namespace LeoMaster6.Controllers
 {
 
     [RoutePrefix("introspection")]
-    public class IntrospectionController: BaseController
+    public class IntrospectionController : BaseController
     {
         public class PutBody
         {
             public string Name { get; set; }
-            public DateTime LastFulfil { get; set; }
+            public DateTime LastFulfill { get; set; }
+        }
+
+        private class IntrospectionConfig
+        {
+            public int Passcode { get; set; }
+            public string AntiSpamToken { get; set; }
         }
 
         public IntrospectionController()
@@ -29,13 +36,13 @@ namespace LeoMaster6.Controllers
             var passcodePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Config);
             var fulfillmentPath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Fulfillments);
 
-            var selfCheckingResult = PassSelfCheckingSequences(routinePath, passcodePath, fulfillmentPath);
+            var selfCheckingResult = PassSelfCheckingSequences(routinePath, passcodePath, fulfillmentPath, true);
 
             if (!selfCheckingResult.Valid)
             {
                 throw new LskSelfCheckingException(selfCheckingResult.Message, nameof(IntrospectionController));
             }
-        }   
+        }
 
 
         [HttpGet]
@@ -43,7 +50,7 @@ namespace LeoMaster6.Controllers
         {
             var perf = PerfCounter.NewThenCheck(this.ToString() + "." + MethodBase.GetCurrentMethod().Name);
             var fulfillmentPath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Fulfillments);
-            var antiSpamResult = PassAntiSpamDefender(fulfillmentPath, Constants.LskMaxDBFileSizeKB);
+            var antiSpamResult = PassAntiSpamDefender(fulfillmentPath, Constants.LskMaxDBFileSizeKB, true);
 
             if (!antiSpamResult.Valid) return DtoResultV5.Fail(BadRequest, antiSpamResult.Message);
             perf.Check("anti spam end");
@@ -108,64 +115,107 @@ namespace LeoMaster6.Controllers
         }
 
         //----- helpers
-        private ValidationResult PassSelfCheckingSequences(string routinePath, string passcodePath, string fulfillmentPath)
+        private ValidationResult PassSelfCheckingSequences(string routinePath, string configPath, string fulfillmentPath, bool creatFileIfMissing)
         {
-            if (!File.Exists(routinePath)) return ValidationResult.Fail("missing file: " + routinePath);
-            if (!File.Exists(passcodePath)) return ValidationResult.Fail("missing file: " + passcodePath);
-            if (FileSizeGreaterThan(fulfillmentPath, Constants.LskMaxDBFileSizeKB)) return ValidationResult.Fail("file too large, file: " + fulfillmentPath);
+            if (creatFileIfMissing)
+            {
+                void ensureFileExists(string path)
+                {
+                    if (File.Exists(path)) return;
 
-            var lines = File.ReadAllLines(passcodePath);
-            if (!lines.Any(l => !string.IsNullOrEmpty(l))) return ValidationResult.Fail("missing preset config in file: " + passcodePath);
+                    var dir = Path.GetDirectoryName(path);
+                    if (!Directory.Exists(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                    }
+
+                    using (File.Create(dir)) { }
+                }
+
+                ensureFileExists(routinePath);
+                ensureFileExists(configPath);
+            }
+
+            if (!File.Exists(routinePath)) return ValidationResult.Fail("missing file: " + Path.GetFileName(routinePath));
+            if (!File.Exists(configPath)) return ValidationResult.Fail("missing file: " + Path.GetFileName(configPath));
+            if (FileSizeGreaterThan(fulfillmentPath, Constants.LskMaxDBFileSizeKB)) return ValidationResult.Fail("file too large, file: " + Path.GetFileName(fulfillmentPath));
+
+            var lines = File.ReadAllLines(configPath);
+            if (!lines.Any(l => !string.IsNullOrEmpty(l))) return ValidationResult.Fail("missing preset config in file: " + Path.GetFileName(configPath));
+
+            try
+            {
+                var config = JsonConvert.DeserializeObject<IntrospectionConfig>(string.Join(string.Empty, lines));
+                if (config == null || config.Passcode < 1000 || string.IsNullOrWhiteSpace(config.AntiSpamToken)) return ValidationResult.Fail("config file not set. 0xe01");
+                if (config == null || config.AntiSpamToken == null || config.AntiSpamToken.Trim().Length < 4) return ValidationResult.Fail("config file not set. 0xe02");
+            }
+            catch (Exception e)
+            {
+                _logger.Error("fail to deserialize config file", e);
+                return ValidationResult.Fail("config file error. 0xe03");
+            }
 
             lines = File.ReadAllLines(routinePath);
-            if (!lines.Any(l => !string.IsNullOrEmpty(l))) return ValidationResult.Fail("missing routine items in file: " + routinePath);
+            if (!lines.Any(l => !string.IsNullOrEmpty(l))) return ValidationResult.Fail("missing routine items in file: " + Path.GetFileName(routinePath));
 
             return ValidationResult.Success();
         }
 
-        private ValidationResult PassAntiSpamDefender(string fulfilmentPath, int maxSizeInKB)
+        private ValidationResult PassAntiSpamDefender(string fulfilmentPath, int maxSizeInKB, bool simpleMode = false)
         {
             var passcodePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Config);
-            return PassAntiSpamDefender(fulfilmentPath, maxSizeInKB, passcodePath);
+            return PassAntiSpamDefender(fulfilmentPath, maxSizeInKB, passcodePath, simpleMode);
         }
 
-        private ValidationResult PassAntiSpamDefender(string fulfilmentPath, int maxSizeInKB, string passcodePath)
+        private ValidationResult PassAntiSpamDefender(string fulfilmentPath, int maxSizeInKB, string configPath, bool simpleMode = false)
         {
             if (Request.Headers.TryGetValues("lsk-introspection-god", out IEnumerable<string> passcodes))
             {
-                var firstPass = passcodes?.FirstOrDefault() ?? string.Empty;
+                var inputPass = passcodes?.FirstOrDefault() ?? string.Empty;
 
-                if (firstPass.Length < 10) return ValidationResult.Fail("config missing or incorrect");
+                if (inputPass.Length < 6) return ValidationResult.Fail("config missing or incorrect");
 
                 var offsetLength = 2;
-                var offsetString = firstPass.Substring(4, offsetLength);
-                var passcode = firstPass.Substring(0, 4);
-                var passcodeSuffix = firstPass.Substring(6, Math.Min(Constants.LskMaxPasscodeLength, firstPass.Length - 6));
+                var offsetString = inputPass.Substring(4, offsetLength);
 
                 if (!int.TryParse(offsetString, out int _)) return ValidationResult.Fail("fail to parse value");
 
                 if (FileSizeGreaterThan(fulfilmentPath, maxSizeInKB)) return ValidationResult.Fail("insufficient fulfillment storage");
 
-                if (!File.Exists(passcodePath)) return ValidationResult.Fail("internal server error - not fully initialized");
+                if (!File.Exists(configPath)) return ValidationResult.Fail("internal server error - not fully initialized");
 
-                var lines = File.ReadAllLines(passcodePath);
-                var passcodeLine = lines.FirstOrDefault(l => !string.IsNullOrEmpty(l));
-                if (string.IsNullOrEmpty(passcodeLine)) return ValidationResult.Fail("internal server error - not fully initialized");
+                var lines = File.ReadAllLines(configPath);
+                var configLine = lines.FirstOrDefault(l => !string.IsNullOrEmpty(l));
+                if (string.IsNullOrEmpty(configLine)) return ValidationResult.Fail("internal server error - not fully initialized");
 
                 var now = DateTime.Now.ToString("HHmm");
-                var hash = (int.Parse(now[1].ToString()) + int.Parse(now[2].ToString())) % 10;
 
-                if (hash != int.Parse(passcode[0].ToString())) return ValidationResult.Fail("!spam!");
-                if (Math.Abs(int.Parse(now[3].ToString()) - int.Parse(firstPass.Last().ToString())) > 3) return ValidationResult.Fail("!spam!");
+                if (Math.Abs(int.Parse(now[3].ToString()) - int.Parse(inputPass.Last().ToString())) > 2) return ValidationResult.Fail("spam. 0xe10");
 
-                var length = passcodeLine.Length;
-                while (length >= 0)
+                var config = JsonConvert.DeserializeObject<IntrospectionConfig>(string.Join(string.Empty, lines));
+
+                if (simpleMode)
                 {
-                    var unit = Math.Min(2, length);
-                    var startIndex = passcodeLine.Length - length;
+                    var pass = config.Passcode.ToString();
 
-                    if (!passcodeSuffix.Contains(passcodeLine.Substring(startIndex, unit))) return ValidationResult.Fail("!spam!");
-                    length -= 2;
+                    if (pass != inputPass.Substring(inputPass.Length - 1 - pass.Length, pass.Length)) return ValidationResult.Fail("spam. 0xe10");
+                }
+                else
+                {
+                    var inputPrefix = inputPass.Substring(0, 4);
+                    var inputSuffix = inputPass.Substring(6, Math.Min(Constants.LskMaxPasscodeLength, inputPass.Length - 6));
+                    var hash = (int.Parse(now[1].ToString()) + int.Parse(now[2].ToString())) % 10;
+
+                    if (hash != int.Parse(inputPrefix[0].ToString())) return ValidationResult.Fail("spam. 0xe10");
+
+                    config.AntiSpamToken = config.AntiSpamToken.Trim();
+
+                    for (var i = 0; i < config.AntiSpamToken.Length; i += 2)
+                    {
+                        var unit = Math.Min(2, config.AntiSpamToken.Length - i);
+
+                        if (!inputSuffix.Contains(config.AntiSpamToken.Substring(i, unit))) return ValidationResult.Fail("spam. 0xe10");
+                    }
                 }
 
                 return ValidationResult.Success(offsetString);
