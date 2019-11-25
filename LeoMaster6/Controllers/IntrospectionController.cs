@@ -188,20 +188,20 @@ namespace LeoMaster6.Controllers
                 var configLine = lines.FirstOrDefault(l => !string.IsNullOrEmpty(l));
                 if (string.IsNullOrEmpty(configLine)) return ValidationResult.Fail("internal server error - not fully initialized");
 
-                var now = DateTime.Now.ToString("HHmm");
-
-                if (Math.Abs(int.Parse(now[3].ToString()) - int.Parse(inputPass.Last().ToString())) > 2) return ValidationResult.Fail("spam. 0xe10");
-
                 var config = JsonConvert.DeserializeObject<IntrospectionConfig>(string.Join(string.Empty, lines));
 
                 if (simpleMode)
                 {
                     var pass = config.Passcode.ToString();
 
-                    if (pass != inputPass.Substring(inputPass.Length - 1 - pass.Length, pass.Length)) return ValidationResult.Fail("spam. 0xe10");
+                    if (!inputPass.Contains(pass)) return ValidationResult.Fail("spam. 0xe10");
                 }
                 else
                 {
+                    var now = DateTime.Now.ToString("HHmm");
+
+                    if (Math.Abs(int.Parse(now[3].ToString()) - int.Parse(inputPass.Last().ToString())) > 2) return ValidationResult.Fail("spam. 0xe10");
+
                     var inputPrefix = inputPass.Substring(0, 4);
                     var inputSuffix = inputPass.Substring(6, Math.Min(Constants.LskMaxPasscodeLength, inputPass.Length - 6));
                     var hash = (int.Parse(now[1].ToString()) + int.Parse(now[2].ToString())) % 10;
