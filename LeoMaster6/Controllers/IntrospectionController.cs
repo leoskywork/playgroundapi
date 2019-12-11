@@ -198,23 +198,23 @@ namespace LeoMaster6.Controllers
                 }
                 else
                 {
-                    var now = DateTime.Now.ToString("HHmm");
+                    //var now = DateTime.Now.ToString("HHmm");
 
-                    if (Math.Abs(int.Parse(now[3].ToString()) - int.Parse(inputPass.Last().ToString())) > 2) return ValidationResult.Fail("spam. 0xe10");
+                    //if (Math.Abs(int.Parse(now[3].ToString()) - int.Parse(inputPass.Last().ToString())) > 2) return ValidationResult.Fail("spam. 0xe10");
 
-                    var inputPrefix = inputPass.Substring(0, 4);
+                    //var inputPrefix = inputPass.Substring(0, 4);
                     var inputSuffix = inputPass.Substring(6, Math.Min(Constants.LskMaxPasscodeLength, inputPass.Length - 6));
-                    var hash = (int.Parse(now[1].ToString()) + int.Parse(now[2].ToString())) % 10;
+                    //var hash = (int.Parse(now[1].ToString()) + int.Parse(now[2].ToString())) % 10;
 
-                    if (hash != int.Parse(inputPrefix[0].ToString())) return ValidationResult.Fail("spam. 0xe10");
+                    //if (hash != int.Parse(inputPrefix[0].ToString())) return ValidationResult.Fail("spam. 0xe10");
 
                     config.AntiSpamToken = config.AntiSpamToken.Trim();
 
                     for (var i = 0; i < config.AntiSpamToken.Length; i += 2)
                     {
-                        var unit = Math.Min(2, config.AntiSpamToken.Length - i);
+                        var unitLength = Math.Min(2, config.AntiSpamToken.Length - i);
 
-                        if (!inputSuffix.Contains(config.AntiSpamToken.Substring(i, unit))) return ValidationResult.Fail("spam. 0xe10");
+                        if (!inputSuffix.Contains(config.AntiSpamToken.Substring(i, unitLength))) return ValidationResult.Fail("spam. 0xe10");
                     }
                 }
 
