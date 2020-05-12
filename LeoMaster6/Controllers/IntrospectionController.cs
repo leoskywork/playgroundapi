@@ -50,7 +50,7 @@ namespace LeoMaster6.Controllers
         {
             var perf = PerfCounter.NewThenCheck(this.ToString() + "." + MethodBase.GetCurrentMethod().Name);
             var fulfillmentPath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Fulfillments);
-            var antiSpamResult = PassAntiSpamDefender(fulfillmentPath, Constants.LskMaxDBFileSizeKB, true);
+            var antiSpamResult = PassAntiSpamDefender(fulfillmentPath, Constants.LskMaxDBFileSizeKB, AuthMode.Simple);
 
             if (!antiSpamResult.Valid) return DtoResultV5.Fail(BadRequest, antiSpamResult.Message);
             perf.Check("anti spam end");
@@ -75,7 +75,7 @@ namespace LeoMaster6.Controllers
 
             var perf = PerfCounter.NewThenCheck(this.ToString() + "." + MethodBase.GetCurrentMethod().Name);
             var fulfillmentPath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Fulfillments);
-            var antiSpamResult = PassAntiSpamDefender(fulfillmentPath, Constants.LskMaxDBFileSizeKB);
+            var antiSpamResult = PassAntiSpamDefender(fulfillmentPath, Constants.LskMaxDBFileSizeKB, AuthMode.None);
 
             if (!antiSpamResult.Valid) return DtoResultV5.Fail(BadRequest, antiSpamResult.Message);
             perf.Check("anti spam end");
@@ -161,64 +161,75 @@ namespace LeoMaster6.Controllers
             return ValidationResult.Success();
         }
 
-        private ValidationResult PassAntiSpamDefender(string fulfilmentPath, int maxSizeInKB, bool simpleMode = false)
+        private ValidationResult PassAntiSpamDefender(string fulfilmentPath, int maxSizeInKB, AuthMode mode)
         {
             var passcodePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Config);
-            return PassAntiSpamDefender(fulfilmentPath, maxSizeInKB, passcodePath, simpleMode);
+            return PassAntiSpamDefender(fulfilmentPath, maxSizeInKB, passcodePath, mode);
         }
 
-        private ValidationResult PassAntiSpamDefender(string fulfilmentPath, int maxSizeInKB, string configPath, bool simpleMode = false)
+        private ValidationResult PassAntiSpamDefender(string fulfilmentPath, int maxSizeInKB, string configPath, AuthMode mode)
         {
             if (Request.Headers.TryGetValues("lsk-introspection-god", out IEnumerable<string> passcodes))
             {
                 var inputPass = passcodes?.FirstOrDefault() ?? string.Empty;
+                var inputMaxLength = 12;
 
-                if (inputPass.Length < 6) return ValidationResult.Fail("config missing or incorrect");
+                if (inputPass.Length > inputMaxLength) return ValidationResult.Fail("input too long");
 
-                var offsetLength = 2;
-                var offsetString = inputPass.Substring(4, offsetLength);
-
-                if (!int.TryParse(offsetString, out int _)) return ValidationResult.Fail("fail to parse value");
-
-                if (FileSizeGreaterThan(fulfilmentPath, maxSizeInKB)) return ValidationResult.Fail("insufficient fulfillment storage");
-
-                if (!File.Exists(configPath)) return ValidationResult.Fail("internal server error - not fully initialized");
-
-                var lines = File.ReadAllLines(configPath);
-                var configLine = lines.FirstOrDefault(l => !string.IsNullOrEmpty(l));
-                if (string.IsNullOrEmpty(configLine)) return ValidationResult.Fail("internal server error - not fully initialized");
-
-                var config = JsonConvert.DeserializeObject<IntrospectionConfig>(string.Join(string.Empty, lines));
-
-                if (simpleMode)
+                if (mode == AuthMode.None)
                 {
-                    var pass = config.Passcode.ToString();
+                    if (!int.TryParse(inputPass, out int _)) return ValidationResult.Fail("fail to parse value");
 
-                    if (!inputPass.Contains(pass)) return ValidationResult.Fail("spam. 0xe10");
+                    return ValidationResult.Success(inputPass);
                 }
                 else
                 {
-                    //var now = DateTime.Now.ToString("HHmm");
+                    if (inputPass.Length < 6) return ValidationResult.Fail("config missing or incorrect");
 
-                    //if (Math.Abs(int.Parse(now[3].ToString()) - int.Parse(inputPass.Last().ToString())) > 2) return ValidationResult.Fail("spam. 0xe10");
+                    var offsetLength = 2;
+                    var offsetString = inputPass.Substring(4, offsetLength);
 
-                    //var inputPrefix = inputPass.Substring(0, 4);
-                    var inputSuffix = inputPass.Substring(6, Math.Min(Constants.LskMaxPasscodeLength, inputPass.Length - 6));
-                    //var hash = (int.Parse(now[1].ToString()) + int.Parse(now[2].ToString())) % 10;
+                    if (!int.TryParse(offsetString, out int _)) return ValidationResult.Fail("fail to parse value");
+                    if (FileSizeGreaterThan(fulfilmentPath, maxSizeInKB)) return ValidationResult.Fail("insufficient fulfillment storage");
+                    if (!File.Exists(configPath)) return ValidationResult.Fail("internal server error - not fully initialized");
 
-                    //if (hash != int.Parse(inputPrefix[0].ToString())) return ValidationResult.Fail("spam. 0xe10");
+                    var lines = File.ReadAllLines(configPath);
+                    var configLine = lines.FirstOrDefault(l => !string.IsNullOrEmpty(l));
 
-                    config.AntiSpamToken = config.AntiSpamToken.Trim();
+                    if (string.IsNullOrEmpty(configLine)) return ValidationResult.Fail("internal server error - not fully initialized");
 
-                    for (var i = 0; i < config.AntiSpamToken.Length; i += 2)
+                    var config = JsonConvert.DeserializeObject<IntrospectionConfig>(string.Join(string.Empty, lines));
+
+                    if (mode == AuthMode.Simple)
                     {
-                        var unitLength = Math.Min(2, config.AntiSpamToken.Length - i);
+                        var pass = config.Passcode.ToString();
 
-                        if (!inputSuffix.Contains(config.AntiSpamToken.Substring(i, unitLength))) return ValidationResult.Fail("spam. 0xe10");
+                        if (!inputPass.Contains(pass)) return ValidationResult.Fail("spam. 0xe10");
                     }
-                }
+                    else if (mode == AuthMode.Standard)
+                    {
+                        //var now = DateTime.Now.ToString("HHmm");
 
-                return ValidationResult.Success(offsetString);
+                        //if (Math.Abs(int.Parse(now[3].ToString()) - int.Parse(inputPass.Last().ToString())) > 2) return ValidationResult.Fail("spam. 0xe10");
+
+                        //var inputPrefix = inputPass.Substring(0, 4);
+                        var inputSuffix = inputPass.Substring(6, Math.Min(Constants.LskMaxPasscodeLength, inputPass.Length - 6));
+                        //var hash = (int.Parse(now[1].ToString()) + int.Parse(now[2].ToString())) % 10;
+
+                        //if (hash != int.Parse(inputPrefix[0].ToString())) return ValidationResult.Fail("spam. 0xe10");
+
+                        config.AntiSpamToken = config.AntiSpamToken.Trim();
+
+                        for (var i = 0; i < config.AntiSpamToken.Length; i += 2)
+                        {
+                            var unitLength = Math.Min(2, config.AntiSpamToken.Length - i);
+
+                            if (!inputSuffix.Contains(config.AntiSpamToken.Substring(i, unitLength))) return ValidationResult.Fail("spam. 0xe10");
+                        }
+                    }
+
+                    return ValidationResult.Success(offsetString);
+                }
             }
 
             return ValidationResult.Fail("config missing");
@@ -306,6 +317,13 @@ namespace LeoMaster6.Controllers
             }
 
             return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), $"{Constants.LsktextPrefix}introspection-{type.ToString().ToLower()}.txt");
+        }
+
+        private enum AuthMode
+        {
+            None,
+            Simple,
+            Standard
         }
     }
 
