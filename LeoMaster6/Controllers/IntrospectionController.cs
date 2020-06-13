@@ -48,7 +48,7 @@ namespace LeoMaster6.Controllers
         [HttpGet]
         public IHttpActionResult Get()
         {
-            var fulfillments = ReadFulfillmentsOfThisYear();
+            var fulfillments = ReadFulfillmentsOfThisYear(AuthMode.Simple);
 
             var dtoList = fulfillments.Select(f =>
             {
@@ -69,19 +69,17 @@ namespace LeoMaster6.Controllers
             {
                 return DtoResultV5.Fail(BadRequest, "id is empty");
             }
-            else
-            {
-                var fulfillments = ReadFulfillmentsOfThisYear();
-                var fulfillment = fulfillments.FirstOrDefault(f => id.Equals(f.Uid.ToString(), StringComparison.OrdinalIgnoreCase));
-                return DtoResultV5.Success(Json, fulfillment == null ? null : DtoRoutine.From(fulfillment));
-            }
+
+            var fulfillments = ReadFulfillmentsOfThisYear(AuthMode.None);
+            var fulfillment = fulfillments.FirstOrDefault(f => id.Equals(f.Uid.ToString(), StringComparison.OrdinalIgnoreCase));
+            return DtoResultV5.Success(Json, fulfillment == null ? null : DtoRoutine.From(fulfillment));
         }
 
         [HttpGet]
         public IHttpActionResult HeartBeat(string user)
         {
             _logger.Info("enter heart beat, user: " + user);
-            this.Get(string.Empty);
+            ReadFulfillmentsOfThisYear(AuthMode.None);
             _logger.Info("leave heart beat");
 
             return DtoResultV5.Success(Json, "heart beat");
@@ -194,67 +192,67 @@ namespace LeoMaster6.Controllers
 
         private ValidationResult PassAntiSpamDefender(string fulfilmentPath, int maxSizeInKB, string configPath, AuthMode mode)
         {
-            if (Request.Headers.TryGetValues("lsk-introspection-god", out IEnumerable<string> passcodes))
+            Request.Headers.TryGetValues("lsk-introspection-god", out IEnumerable<string> passcodes);
+            var inputPass = passcodes?.FirstOrDefault() ?? string.Empty;
+
+            if (mode == AuthMode.None)
             {
-                var inputPass = passcodes?.FirstOrDefault() ?? string.Empty;
+                return ValidationResult.Success("no-auth");
+            }
+
+            if(!string.IsNullOrEmpty(inputPass))
+            {
                 var inputMaxLength = 12;
 
                 if (inputPass.Length > inputMaxLength) return ValidationResult.Fail("input too long");
+                if (!int.TryParse(inputPass, out int _)) return ValidationResult.Fail("fail to parse value");
 
-                if (mode == AuthMode.None)
+
+                if (inputPass.Length < 6) return ValidationResult.Fail("config missing or incorrect");
+
+                var offsetLength = 2;
+                var offsetString = inputPass.Substring(4, offsetLength);
+
+                if (!int.TryParse(offsetString, out int _)) return ValidationResult.Fail("fail to parse value");
+                if (FileSizeGreaterThan(fulfilmentPath, maxSizeInKB)) return ValidationResult.Fail("insufficient fulfillment storage");
+                if (!File.Exists(configPath)) return ValidationResult.Fail("internal server error - not fully initialized");
+
+                var lines = File.ReadAllLines(configPath);
+                var configLine = lines.FirstOrDefault(l => !string.IsNullOrEmpty(l));
+
+                if (string.IsNullOrEmpty(configLine)) return ValidationResult.Fail("internal server error - not fully initialized");
+
+                var config = JsonConvert.DeserializeObject<IntrospectionConfig>(string.Join(string.Empty, lines));
+
+                if (mode == AuthMode.Simple)
                 {
-                    if (!int.TryParse(inputPass, out int _)) return ValidationResult.Fail("fail to parse value");
+                    var pass = config.Passcode.ToString();
 
-                    return ValidationResult.Success(inputPass);
+                    if (!inputPass.Contains(pass)) return ValidationResult.Fail("spam. 0xe10");
                 }
-                else
+                else if (mode == AuthMode.Standard)
                 {
-                    if (inputPass.Length < 6) return ValidationResult.Fail("config missing or incorrect");
+                    //var now = DateTime.Now.ToString("HHmm");
 
-                    var offsetLength = 2;
-                    var offsetString = inputPass.Substring(4, offsetLength);
+                    //if (Math.Abs(int.Parse(now[3].ToString()) - int.Parse(inputPass.Last().ToString())) > 2) return ValidationResult.Fail("spam. 0xe10");
 
-                    if (!int.TryParse(offsetString, out int _)) return ValidationResult.Fail("fail to parse value");
-                    if (FileSizeGreaterThan(fulfilmentPath, maxSizeInKB)) return ValidationResult.Fail("insufficient fulfillment storage");
-                    if (!File.Exists(configPath)) return ValidationResult.Fail("internal server error - not fully initialized");
+                    //var inputPrefix = inputPass.Substring(0, 4);
+                    var inputSuffix = inputPass.Substring(6, Math.Min(Constants.LskMaxPasscodeLength, inputPass.Length - 6));
+                    //var hash = (int.Parse(now[1].ToString()) + int.Parse(now[2].ToString())) % 10;
 
-                    var lines = File.ReadAllLines(configPath);
-                    var configLine = lines.FirstOrDefault(l => !string.IsNullOrEmpty(l));
+                    //if (hash != int.Parse(inputPrefix[0].ToString())) return ValidationResult.Fail("spam. 0xe10");
 
-                    if (string.IsNullOrEmpty(configLine)) return ValidationResult.Fail("internal server error - not fully initialized");
+                    config.AntiSpamToken = config.AntiSpamToken.Trim();
 
-                    var config = JsonConvert.DeserializeObject<IntrospectionConfig>(string.Join(string.Empty, lines));
-
-                    if (mode == AuthMode.Simple)
+                    for (var i = 0; i < config.AntiSpamToken.Length; i += 2)
                     {
-                        var pass = config.Passcode.ToString();
+                        var unitLength = Math.Min(2, config.AntiSpamToken.Length - i);
 
-                        if (!inputPass.Contains(pass)) return ValidationResult.Fail("spam. 0xe10");
+                        if (!inputSuffix.Contains(config.AntiSpamToken.Substring(i, unitLength))) return ValidationResult.Fail("spam. 0xe10");
                     }
-                    else if (mode == AuthMode.Standard)
-                    {
-                        //var now = DateTime.Now.ToString("HHmm");
-
-                        //if (Math.Abs(int.Parse(now[3].ToString()) - int.Parse(inputPass.Last().ToString())) > 2) return ValidationResult.Fail("spam. 0xe10");
-
-                        //var inputPrefix = inputPass.Substring(0, 4);
-                        var inputSuffix = inputPass.Substring(6, Math.Min(Constants.LskMaxPasscodeLength, inputPass.Length - 6));
-                        //var hash = (int.Parse(now[1].ToString()) + int.Parse(now[2].ToString())) % 10;
-
-                        //if (hash != int.Parse(inputPrefix[0].ToString())) return ValidationResult.Fail("spam. 0xe10");
-
-                        config.AntiSpamToken = config.AntiSpamToken.Trim();
-
-                        for (var i = 0; i < config.AntiSpamToken.Length; i += 2)
-                        {
-                            var unitLength = Math.Min(2, config.AntiSpamToken.Length - i);
-
-                            if (!inputSuffix.Contains(config.AntiSpamToken.Substring(i, unitLength))) return ValidationResult.Fail("spam. 0xe10");
-                        }
-                    }
-
-                    return ValidationResult.Success(offsetString);
                 }
+
+                return ValidationResult.Success(offsetString);
             }
 
             return ValidationResult.Fail("config missing");
@@ -344,11 +342,11 @@ namespace LeoMaster6.Controllers
             return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), $"{Constants.LsktextPrefix}introspection-{type.ToString().ToLower()}.txt");
         }
 
-        private List<RoutineFulfillment> ReadFulfillmentsOfThisYear()
+        private List<RoutineFulfillment> ReadFulfillmentsOfThisYear(AuthMode authMode)
         {
             var perf = PerfCounter.NewThenCheck(this.ToString() + "." + MethodBase.GetCurrentMethod().Name);
             var fulfillmentPath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Fulfillments);
-            var antiSpamResult = PassAntiSpamDefender(fulfillmentPath, Constants.LskMaxDBFileSizeKB, AuthMode.Simple);
+            var antiSpamResult = PassAntiSpamDefender(fulfillmentPath, Constants.LskMaxDBFileSizeKB, authMode);
 
             if (!antiSpamResult.Valid) //return DtoResultV5.Fail(BadRequest, antiSpamResult.Message);
             {
