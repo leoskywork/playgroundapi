@@ -197,7 +197,7 @@ namespace LeoMaster6.Controllers
 
             if (mode == AuthMode.None)
             {
-                return ValidationResult.Success("no-auth");
+                return ValidationResult.Success(inputPass);
             }
 
             if(!string.IsNullOrEmpty(inputPass))
