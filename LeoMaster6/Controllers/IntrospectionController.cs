@@ -48,21 +48,46 @@ namespace LeoMaster6.Controllers
         [HttpGet]
         public IHttpActionResult Get()
         {
-            var perf = PerfCounter.NewThenCheck(this.ToString() + "." + MethodBase.GetCurrentMethod().Name);
-            var fulfillmentPath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Fulfillments);
-            var antiSpamResult = PassAntiSpamDefender(fulfillmentPath, Constants.LskMaxDBFileSizeKB, AuthMode.Simple);
+            var fulfillments = ReadFulfillmentsOfThisYear();
 
-            if (!antiSpamResult.Valid) return DtoResultV5.Fail(BadRequest, antiSpamResult.Message);
-            perf.Check("anti spam end");
+            var dtoList = fulfillments.Select(f =>
+            {
+                var dto = DtoRoutine.From(f);
+                dto.HistoryFulfillments = null;
+                return dto;
+            });
 
-            SyncRoutine(fulfillmentPath);
-            perf.Check("sync routine end");
-
-            var fulfillments = ReadLskjson<Guid, RoutineFulfillment>(fulfillmentPath, CollectLskjsonLineDefault);
-            perf.End("read fulfillment end", true);
-
-            return DtoResultV5.Success(Json, fulfillments.Select(f => DtoRoutine.From(f)));
+            return DtoResultV5.Success(Json, dtoList);
         }
+
+
+        [HttpGet]
+        [Route("{id:guid}")]
+        public IHttpActionResult Get(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return DtoResultV5.Fail(BadRequest, "id is empty");
+            }
+            else
+            {
+                var fulfillments = ReadFulfillmentsOfThisYear();
+                var fulfillment = fulfillments.FirstOrDefault(f => id.Equals(f.Uid.ToString(), StringComparison.OrdinalIgnoreCase));
+                return DtoResultV5.Success(Json, fulfillment == null ? null : DtoRoutine.From(fulfillment));
+            }
+        }
+
+        [HttpGet]
+        public IHttpActionResult HeartBeat(string user)
+        {
+            _logger.Info("enter heart beat, user: " + user);
+            this.Get(string.Empty);
+            _logger.Info("leave heart beat");
+
+            return DtoResultV5.Success(Json, "heart beat");
+        }
+
+   
 
         [HttpPut]
         [Route("{id:guid}")]
@@ -317,6 +342,27 @@ namespace LeoMaster6.Controllers
             }
 
             return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), $"{Constants.LsktextPrefix}introspection-{type.ToString().ToLower()}.txt");
+        }
+
+        private List<RoutineFulfillment> ReadFulfillmentsOfThisYear()
+        {
+            var perf = PerfCounter.NewThenCheck(this.ToString() + "." + MethodBase.GetCurrentMethod().Name);
+            var fulfillmentPath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Fulfillments);
+            var antiSpamResult = PassAntiSpamDefender(fulfillmentPath, Constants.LskMaxDBFileSizeKB, AuthMode.Simple);
+
+            if (!antiSpamResult.Valid) //return DtoResultV5.Fail(BadRequest, antiSpamResult.Message);
+            {
+                throw new LskExcepiton("Bad request, " + antiSpamResult.Message);
+            }
+            perf.Check("anti spam end");
+
+            SyncRoutine(fulfillmentPath);
+            perf.Check("sync routine end");
+
+            var fulfillments = ReadLskjson<Guid, RoutineFulfillment>(fulfillmentPath, CollectLskjsonLineDefault);
+            perf.End("read fulfillment end", true);
+
+            return fulfillments;
         }
 
         private enum AuthMode
