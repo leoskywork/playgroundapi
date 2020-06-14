@@ -128,9 +128,11 @@ namespace LeoMaster6.Controllers
 
                     if (fulfill.HistoryFulfillments?.Length > 0)
                     {
-                        var archiveUnit = fulfill.HistoryFulfillments.Select(h => new FulfillmentArchive(fulfill.Uid, null, h));
-                        var archivePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Archives);
-                        AppendObjectToFile(archivePath, archiveUnit.ToArray());
+                        var migrateUnit = fulfill.HistoryFulfillments.Select(h => new FulfillmentArchive(fulfill.Uid, null, h));
+                        //var archivePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Archives);
+                        //AppendObjectToFile(archivePath, migrateUnit.ToArray());
+
+                        fulfill.StagedArchives = migrateUnit.ToArray();
                     }
                 }
 
