@@ -21,7 +21,7 @@ namespace LeoMaster6.Controllers
         {
             public string Name { get; set; }
             public DateTime LastFulfill { get; set; }
-            public string Remark { get; set; }
+            public string LastRemark { get; set; }
         }
 
         private class IntrospectionConfig
@@ -157,7 +157,7 @@ namespace LeoMaster6.Controllers
             }
 
             fulfill.LastFulfill = DateTime.Now.AddDays(-1 * Math.Abs(offsetDays));
-            fulfill.LastRemark = body.Remark;
+            fulfill.LastRemark = body.LastRemark;
             fulfill.UpdateBy = "fixme-update";
             fulfill.UpdateAt = DateTime.Now;
 
