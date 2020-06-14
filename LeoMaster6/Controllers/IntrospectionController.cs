@@ -21,6 +21,7 @@ namespace LeoMaster6.Controllers
         {
             public string Name { get; set; }
             public DateTime LastFulfill { get; set; }
+            public string Remark { get; set; }
         }
 
         private class IntrospectionConfig
@@ -49,13 +50,7 @@ namespace LeoMaster6.Controllers
         public IHttpActionResult Get()
         {
             var fulfillments = ReadFulfillmentsOfThisYear(AuthMode.Simple);
-
-            var dtoList = fulfillments.Select(f =>
-            {
-                var dto = DtoRoutine.From(f);
-                dto.HistoryFulfillments = null;
-                return dto;
-            });
+            var dtoList = fulfillments.Select(f => DtoRoutine.From(f, false));
 
             return DtoResultV5.Success(Json, dtoList);
         }
@@ -63,16 +58,27 @@ namespace LeoMaster6.Controllers
 
         [HttpGet]
         [Route("{id:guid}")]
-        public IHttpActionResult Get(string id)
+        public IHttpActionResult Get(string id, string history)
         {
             if (string.IsNullOrWhiteSpace(id))
             {
                 return DtoResultV5.Fail(BadRequest, "id is empty");
             }
 
-            var fulfillments = ReadFulfillmentsOfThisYear(AuthMode.None);
-            var fulfillment = fulfillments.FirstOrDefault(f => id.Equals(f.Uid.ToString(), StringComparison.OrdinalIgnoreCase));
-            return DtoResultV5.Success(Json, fulfillment == null ? null : DtoRoutine.From(fulfillment));
+            if (Constants.LskArchived.Equals(history, StringComparison.OrdinalIgnoreCase))
+            {
+                var archivePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Archives);
+                var archivedRecords = ReadLskjson<Guid, FulfillmentArchive>(archivePath, CollectLskjsonLineDefault);
+                var recordsByParentUid = archivedRecords.Where(a => id.Equals(a.ParentUid.ToString(), StringComparison.OrdinalIgnoreCase));
+                return DtoResultV5.Success(Json, recordsByParentUid.Select(r => DtoFulfillmentArchive.From(r)));
+            }
+            else
+            {
+                var fulfillments = ReadFulfillmentsOfThisYear(AuthMode.None);
+                var fulfillment = fulfillments.FirstOrDefault(f => id.Equals(f.Uid.ToString(), StringComparison.OrdinalIgnoreCase));
+                var dto = fulfillment == null ? null : DtoRoutine.From(fulfillment, true);
+                return DtoResultV5.Success(Json, dto);
+            }
         }
 
         [HttpGet]
@@ -116,25 +122,47 @@ namespace LeoMaster6.Controllers
 
             if (fulfill.LastFulfill.HasValue)
             {
-                if (fulfill.HistoryFulfillments == null || !fulfill.HistoryFulfillments.Any())
+                if (!fulfill.HasMigrated)
                 {
-                    fulfill.HistoryFulfillments = new[] { fulfill.LastFulfill.Value };
+                    fulfill.HasMigrated = true;
+
+                    if (fulfill.HistoryFulfillments?.Length > 0)
+                    {
+                        var archiveUnit = fulfill.HistoryFulfillments.Select(h => new FulfillmentArchive(fulfill.Uid, null, h));
+                        var archivePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Archives);
+                        AppendObjectToFile(archivePath, archiveUnit.ToArray());
+                    }
+                }
+
+                if (fulfill.StagedArchives?.Length > 0)
+                {
+                    var staged = fulfill.StagedArchives.ToList();
+                    staged.Add(FulfillmentArchive.FromLast(fulfill));
+
+                    if (staged.Count >= Constants.LskFulfillmentActiveRecords + Constants.LskFulfillmentArchiveUnit)
+                    {
+                        var archiveUnit = staged.GetRange(Constants.LskFulfillmentActiveRecords, Constants.LskFulfillmentArchiveUnit);
+                        var archivePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Archives);
+                        AppendObjectToFile(archivePath, archiveUnit);
+                        staged.RemoveRange(Constants.LskFulfillmentActiveRecords, Constants.LskFulfillmentArchiveUnit);
+                    }
+
+                    fulfill.StagedArchives = staged.ToArray();
                 }
                 else
                 {
-                    var history = fulfill.HistoryFulfillments.ToList();
-                    history.Add(fulfill.LastFulfill.Value);
-                    fulfill.HistoryFulfillments = history.ToArray();
+                    fulfill.StagedArchives = new[] { FulfillmentArchive.FromLast(fulfill) };
                 }
             }
 
             fulfill.LastFulfill = DateTime.Now.AddDays(-1 * Math.Abs(offsetDays));
+            fulfill.LastRemark = body.Remark;
             fulfill.UpdateBy = "fixme-update";
             fulfill.UpdateAt = DateTime.Now;
 
             WriteToFile(fulfillmentPath, fulfillments);
             perf.End("override fulfill end", true);
-            return DtoResultV5.Success(Json, DtoRoutine.From(fulfill));
+            return DtoResultV5.Success(Json, DtoRoutine.From(fulfill, false));
         }
 
         //----- helpers
@@ -334,7 +362,7 @@ namespace LeoMaster6.Controllers
 
         private static string GetFullIntrospectionDataPath(DateTime time, IntrospectionDataType type)
         {
-            if (type == IntrospectionDataType.Fulfillments)
+            if (type == IntrospectionDataType.Fulfillments || type == IntrospectionDataType.Archives)
             {
                 return Path.Combine(GetBaseDirectory(), GetDatapoolEntry(), $"{Constants.LsktextPrefix}introspection-{type.ToString().ToLower()}-{time.ToString("yyyy")}.txt");
             }
@@ -373,8 +401,9 @@ namespace LeoMaster6.Controllers
 
     public enum IntrospectionDataType
     {
+        Config,
         Routines,
         Fulfillments,
-        Config
+        Archives
     }
 }
