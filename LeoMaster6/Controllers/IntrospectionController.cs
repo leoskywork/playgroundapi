@@ -58,7 +58,7 @@ namespace LeoMaster6.Controllers
 
         [HttpGet]
         [Route("{id:guid}")]
-        public IHttpActionResult Get(string id, string history)
+        public IHttpActionResult Get(string id, string history = null)
         {
             if (string.IsNullOrWhiteSpace(id))
             {
@@ -143,8 +143,9 @@ namespace LeoMaster6.Controllers
                     {
                         var archiveUnit = staged.GetRange(Constants.LskFulfillmentActiveRecords, Constants.LskFulfillmentArchiveUnit);
                         var archivePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Archives);
-                        AppendObjectToFile(archivePath, archiveUnit);
+                        AppendObjectToFile(archivePath, archiveUnit.ToArray());
                         staged.RemoveRange(Constants.LskFulfillmentActiveRecords, Constants.LskFulfillmentArchiveUnit);
+                        fulfill.HasArchived = true;
                     }
 
                     fulfill.StagedArchives = staged.ToArray();

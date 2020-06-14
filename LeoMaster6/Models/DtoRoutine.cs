@@ -15,7 +15,8 @@ namespace LeoMaster6.Models
         public string Name { get; set; }
         public DateTime? LastFulfill { get; set; }
         public string LastRemark { get; set; }
-        public DtoFulfillmentArchive[] HistoryFulfillments { get; set; } 
+        public DtoFulfillmentArchive[] HistoryFulfillments { get; set; }
+        public bool HasArchived { get; set; }
 
         //optional fields
         public string CreateBy { get; set; }
@@ -38,6 +39,7 @@ namespace LeoMaster6.Models
                 LastFulfill = fulfill.LastFulfill,
                 LastRemark = fulfill.LastRemark,
                 HistoryFulfillments = history,
+                HasArchived = fulfill.HasArchived,
                 CreateAt = fulfill.CreateAt,
                 CreateBy = fulfill.CreateBy
             };
@@ -59,7 +61,7 @@ namespace LeoMaster6.Models
                 ParentUid = archive.ParentUid,
                 Uid = archive.Uid,
                 Remark = archive.Remark,
-                Time = archive.FulfillmentTime
+                Time = archive.Time
             };
         }
     }
@@ -76,7 +78,10 @@ namespace LeoMaster6.Models
         /// </summary>
         public DateTime[] HistoryFulfillments { get; set; }
         public bool HasMigrated { get; set; }
-
+        public bool HasArchived { get; set; }
+        /// <summary>
+        /// used to replace HistoryFulfillments
+        /// </summary>
         public FulfillmentArchive[] StagedArchives { get; set; }
 
         //optional fields
@@ -119,7 +124,7 @@ namespace LeoMaster6.Models
     {
         public Guid ParentUid { get; set; }
         public Guid Uid { get; set; }
-        public DateTime FulfillmentTime { get; set; }
+        public DateTime Time { get; set; }
         public string Remark { get; set; }
 
         //optional fields
@@ -139,7 +144,7 @@ namespace LeoMaster6.Models
         {
             this.ParentUid = parent;
             this.Uid = Guid.NewGuid();
-            this.FulfillmentTime = time ?? DateTime.Now;
+            this.Time = time ?? DateTime.Now;
             this.Remark = remark;
             this.CreateBy = createBy;
 
