@@ -15,10 +15,11 @@ namespace LeoMaster6.Common
         public const string LskjsonIndexFilePrefix = "lskjson-index-";
         public const string LsktextPrefix = "lsktxt-";
         public const string LskArchived = "archived";
+        public const string LskStaged = "staged";
 
         public const int LskjsonIndexFileAgeInYears = 10;
         public const int LskMaxReturnNoteCount = 50;
-        public const int LskMaxDBFileSizeKB = 5 * 1024;
+      //  public const int LskMaxDBFileSizeKB = 5 * 1024; //move to config file
         public const int LskMaxPasscodeLength = 128;
         public const int LskFulfillmentArchiveUnit = 10;
         public const int LskFulfillmentActiveRecords = 20;

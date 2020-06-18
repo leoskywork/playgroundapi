@@ -181,11 +181,24 @@ namespace LeoMaster6.Controllers
 
         protected static void CollectLskjsonLineDefault<T>(Dictionary<Guid, T> preItems, string currentLine) where T: ILskjsonLine
         {
+            CollectLskjsonLine(preItems, currentLine, false);
+        }
+
+        protected static void CollectLskjsonLineIncludeDeleted<T>(Dictionary<Guid, T> preItems, string currentLine) where T : ILskjsonLine
+        {
+            CollectLskjsonLine(preItems, currentLine, true);
+        }
+
+        private static void CollectLskjsonLine<T>(Dictionary<Guid, T> preItems, string currentLine, bool includeDeleted) where T : ILskjsonLine
+        {
             if (string.IsNullOrWhiteSpace(currentLine)) return;
 
             var currentItem = Newtonsoft.Json.JsonConvert.DeserializeObject<T>(currentLine);
 
-            if (currentItem == null || currentItem.IsDeleted == true) return;
+            if (currentItem == null) return;
+
+            if (!includeDeleted && currentItem.IsDeleted == true) return;
+
 
             preItems.Add(currentItem.Uid, currentItem);
         }
@@ -254,6 +267,9 @@ namespace LeoMaster6.Controllers
             return AppendToFile(path, builder.ToString());
         }
 
+        /// <summary>
+        /// Overwrite existing content
+        /// </summary>
         protected void WriteToFile<T>(string path, IEnumerable<T> items)
         {
             var builder = new StringBuilder();

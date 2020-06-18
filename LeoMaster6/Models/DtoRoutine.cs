@@ -21,6 +21,8 @@ namespace LeoMaster6.Models
         //optional fields
         public string CreateBy { get; set; }
         public DateTime? CreateAt { get; set; } = DateTime.Now;
+        public bool? IsDeleted { get; set; }
+        public string DeleteReason { get; set; }
 
 
         public override string ToString()
@@ -30,18 +32,21 @@ namespace LeoMaster6.Models
 
         public static DtoRoutine From(RoutineFulfillment fulfill, bool includeHistory)
         {
+            var lastFulfill = fulfill.StagedArchives?.Length > 0 ? fulfill.StagedArchives[fulfill.StagedArchives.Length - 1] : null;
             var history = includeHistory ? fulfill.StagedArchives?.Select(h => DtoFulfillmentArchive.From(h))?.ToArray() : null;
 
             return new DtoRoutine()
             {
                 Uid = fulfill.Uid,
                 Name = fulfill.Name,
-                LastFulfill = fulfill.LastFulfill,
-                LastRemark = fulfill.LastRemark,
+                LastFulfill = lastFulfill?.Time,
+                LastRemark = lastFulfill?.Remark,
                 HistoryFulfillments = history,
                 HasArchived = fulfill.HasArchived,
                 CreateAt = fulfill.CreateAt,
-                CreateBy = fulfill.CreateBy
+                CreateBy = fulfill.CreateBy,
+                IsDeleted = fulfill.IsDeleted,
+                DeleteReason = fulfill.DeleteReason
             };
         }
     }
@@ -53,6 +58,8 @@ namespace LeoMaster6.Models
         public Guid Uid { get; set; }
         public string Remark { get; set; }
         public DateTime Time { get; set; }
+        public bool? IsDeleted { get; set; }
+        public string DeleteReason { get; set; }
 
         public static DtoFulfillmentArchive From(FulfillmentArchive archive)
         {
@@ -61,7 +68,9 @@ namespace LeoMaster6.Models
                 ParentUid = archive.ParentUid,
                 Uid = archive.Uid,
                 Remark = archive.Remark,
-                Time = archive.Time
+                Time = archive.Time,
+                IsDeleted = archive.IsDeleted,
+                DeleteReason = archive.DeleteReason
             };
         }
     }
@@ -71,8 +80,16 @@ namespace LeoMaster6.Models
     {
         public Guid Uid { get; set; }
         public string Name { get; set; }
+
+        /// <summary>
+        /// deprecated - replaced by staged archives
+        /// </summary>
         public DateTime? LastFulfill { get; set; }
+        /// <summary>
+        /// deprecated - replaced by staged archives
+        /// </summary>
         public string LastRemark { get; set; }
+
         /// <summary>
         /// deprecated - replaced by StagedArchives
         /// </summary>
@@ -112,11 +129,12 @@ namespace LeoMaster6.Models
         //[JsonIgnore]
         public DateTime? DeleteAt { get; set; }
 
+        public string DeleteReason { get; set; }
 
 
         public override string ToString()
         {
-            return $"{Name}_{LastFulfill?.ToString()}_{Uid}_{CreateBy}";
+            return $"{Name}_{IsDeleted?.ToString()}_{Uid}_{CreateBy}";
         }
     }
 
@@ -134,6 +152,7 @@ namespace LeoMaster6.Models
         public bool? IsDeleted { get; set; }
         public string DeletedBy { get; set; }
         public DateTime? DeleteAt { get; set; }
+        public string DeleteReason { get; set; }
 
         public FulfillmentArchive()
         {
@@ -155,10 +174,6 @@ namespace LeoMaster6.Models
 
         }
 
-        public static FulfillmentArchive FromLast(RoutineFulfillment fulfill)
-        {
-            return new FulfillmentArchive(fulfill.Uid, fulfill.LastRemark, fulfill.LastFulfill, fulfill.UpdateBy, fulfill.UpdateAt);
-        }
     }
 
 }

@@ -24,10 +24,25 @@ namespace LeoMaster6.Controllers
             public string LastRemark { get; set; }
         }
 
+        public class DeleteBody
+        {
+            public string Name { get; set; }
+            public string Reason { get; set; }
+        }
+
+        public class DeleteHistoryBody
+        {
+            public string Name { get; set; }
+            public string Reason { get; set; }
+            public string Kind { get; set; }
+        }
+
         private class IntrospectionConfig
         {
             public int Passcode { get; set; }
             public string AntiSpamToken { get; set; }
+            public string DeletionToken { get; set; }
+            public int LskMaxDBFileSizeKB { get; set; }
         }
 
         public IntrospectionController()
@@ -50,10 +65,57 @@ namespace LeoMaster6.Controllers
         public IHttpActionResult Get()
         {
             var fulfillments = ReadFulfillmentsOfThisYear(AuthMode.Simple);
+
+            //for migrate
+            if(fulfillments.Any(f => !f.HasMigrated || f.LastFulfill.HasValue))
+            {
+                foreach(var fulfill in fulfillments)
+                {
+                    if (!fulfill.HasMigrated)
+                    {
+                        fulfill.HasMigrated = true;
+
+                        if (fulfill.HistoryFulfillments?.Length > 0)
+                        {
+                            var migrateUnit = fulfill.HistoryFulfillments.Select(h => new FulfillmentArchive(fulfill.Uid, null, h));
+                            //var archivePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Archives);
+                            //AppendObjectToFile(archivePath, migrateUnit.ToArray());
+
+                            fulfill.StagedArchives = migrateUnit.ToArray();
+                        }
+                    }
+
+                    if (fulfill.LastFulfill.HasValue)
+                    {
+                        var record = new FulfillmentArchive(fulfill.Uid, fulfill.LastRemark, fulfill.LastFulfill, fulfill.UpdateBy, fulfill.UpdateAt);
+
+                        if (fulfill.StagedArchives?.Length > 0)
+                        {
+                            var staged = fulfill.StagedArchives.ToList();
+                            staged.Add(record);
+                            fulfill.StagedArchives = staged.ToArray();
+                        }
+                        else
+                        {
+                            fulfill.StagedArchives = new[] { record };
+                        }
+
+                        fulfill.LastFulfill = null;
+                        fulfill.LastRemark = null;
+                    }
+                }
+
+                var path = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Fulfillments);
+
+                WriteToFile(path, fulfillments);
+            }
+
             var dtoList = fulfillments.Select(f => DtoRoutine.From(f, false));
 
             return DtoResultV5.Success(Json, dtoList);
         }
+
+
 
 
         [HttpGet]
@@ -68,7 +130,7 @@ namespace LeoMaster6.Controllers
             if (Constants.LskArchived.Equals(history, StringComparison.OrdinalIgnoreCase))
             {
                 var archivePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Archives);
-                var archivedRecords = ReadLskjson<Guid, FulfillmentArchive>(archivePath, CollectLskjsonLineDefault);
+                var archivedRecords = ReadLskjson<Guid, FulfillmentArchive>(archivePath, CollectLskjsonLineIncludeDeleted);
                 var recordsByParentUid = archivedRecords.Where(a => id.Equals(a.ParentUid.ToString(), StringComparison.OrdinalIgnoreCase));
                 return DtoResultV5.Success(Json, recordsByParentUid.Select(r => DtoFulfillmentArchive.From(r)));
             }
@@ -85,13 +147,13 @@ namespace LeoMaster6.Controllers
         public IHttpActionResult HeartBeat(string user)
         {
             _logger.Info("enter heart beat, user: " + user);
-            ReadFulfillmentsOfThisYear(AuthMode.None);
+            var count = ReadFulfillmentsOfThisYear(AuthMode.None).Count;
             _logger.Info("leave heart beat");
 
-            return DtoResultV5.Success(Json, "heart beat");
+            return DtoResultV5.Success(Json, $"heart heat. {count}");
         }
 
-   
+
 
         [HttpPut]
         [Route("{id:guid}")]
@@ -100,11 +162,9 @@ namespace LeoMaster6.Controllers
             if (id == null) throw new ArgumentNullException(nameof(id));
             if (body == null) throw new ArgumentNullException(nameof(body));
 
-            var inputUid = Guid.Parse(id);
-
             var perf = PerfCounter.NewThenCheck(this.ToString() + "." + MethodBase.GetCurrentMethod().Name);
             var fulfillmentPath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Fulfillments);
-            var antiSpamResult = PassAntiSpamDefender(fulfillmentPath, Constants.LskMaxDBFileSizeKB, AuthMode.None);
+            var antiSpamResult = PassAntiSpamDefender(fulfillmentPath, AuthMode.None);
 
             if (!antiSpamResult.Valid) return DtoResultV5.Fail(BadRequest, antiSpamResult.Message);
             perf.Check("anti spam end");
@@ -112,54 +172,39 @@ namespace LeoMaster6.Controllers
             SyncRoutine(fulfillmentPath);
             perf.Check("sync routine end");
 
-            var fulfillments = ReadLskjson<Guid, RoutineFulfillment>(fulfillmentPath, CollectLskjsonLineDefault);
+            var fulfillments = ReadLskjson<Guid, RoutineFulfillment>(fulfillmentPath, CollectLskjsonLineIncludeDeleted);
             perf.Check("read fulfillment end");
 
+            var inputUid = Guid.Parse(id);
             var fulfill = fulfillments.FirstOrDefault(f => f.Uid == inputUid);
             if (fulfill == null) return DtoResultV5.Fail(BadRequest, "expired data found, please reload page first.");
 
             var offsetDays = int.Parse(antiSpamResult.Message);
+            var date = DateTime.Now.AddDays(-1 * Math.Abs(offsetDays));
+            var record = new FulfillmentArchive(fulfill.Uid, body.LastRemark, date, "fixme-put", DateTime.Now);
 
-            if (fulfill.LastFulfill.HasValue)
+            if (fulfill.StagedArchives == null)
             {
-                if (!fulfill.HasMigrated)
+                fulfill.StagedArchives = new[] { record };
+            }
+            else
+            {
+                var staged = fulfill.StagedArchives.ToList();
+                staged.Add(record);
+
+                if (staged.Count >= Constants.LskFulfillmentActiveRecords + Constants.LskFulfillmentArchiveUnit)
                 {
-                    fulfill.HasMigrated = true;
-
-                    if (fulfill.HistoryFulfillments?.Length > 0)
-                    {
-                        var migrateUnit = fulfill.HistoryFulfillments.Select(h => new FulfillmentArchive(fulfill.Uid, null, h));
-                        //var archivePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Archives);
-                        //AppendObjectToFile(archivePath, migrateUnit.ToArray());
-
-                        fulfill.StagedArchives = migrateUnit.ToArray();
-                    }
+                    var archiveUnit = staged.GetRange(Constants.LskFulfillmentActiveRecords, Constants.LskFulfillmentArchiveUnit);
+                    var archivePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Archives);
+                    AppendObjectToFile(archivePath, archiveUnit.ToArray());
+                    staged.RemoveRange(Constants.LskFulfillmentActiveRecords, Constants.LskFulfillmentArchiveUnit);
+                    fulfill.HasArchived = true;
                 }
 
-                if (fulfill.StagedArchives?.Length > 0)
-                {
-                    var staged = fulfill.StagedArchives.ToList();
-                    staged.Add(FulfillmentArchive.FromLast(fulfill));
-
-                    if (staged.Count >= Constants.LskFulfillmentActiveRecords + Constants.LskFulfillmentArchiveUnit)
-                    {
-                        var archiveUnit = staged.GetRange(Constants.LskFulfillmentActiveRecords, Constants.LskFulfillmentArchiveUnit);
-                        var archivePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Archives);
-                        AppendObjectToFile(archivePath, archiveUnit.ToArray());
-                        staged.RemoveRange(Constants.LskFulfillmentActiveRecords, Constants.LskFulfillmentArchiveUnit);
-                        fulfill.HasArchived = true;
-                    }
-
-                    fulfill.StagedArchives = staged.ToArray();
-                }
-                else
-                {
-                    fulfill.StagedArchives = new[] { FulfillmentArchive.FromLast(fulfill) };
-                }
+                fulfill.StagedArchives = staged.ToArray();
             }
 
-            fulfill.LastFulfill = DateTime.Now.AddDays(-1 * Math.Abs(offsetDays));
-            fulfill.LastRemark = body.LastRemark;
+            //fulfill.StagedArchives = fulfill.StagedArchives.Concat(new[] { record }).ToArray();
             fulfill.UpdateBy = "fixme-update";
             fulfill.UpdateAt = DateTime.Now;
 
@@ -167,6 +212,103 @@ namespace LeoMaster6.Controllers
             perf.End("override fulfill end", true);
             return DtoResultV5.Success(Json, DtoRoutine.From(fulfill, false));
         }
+
+
+        [HttpDelete]
+        [Route("{id:guid}")]
+        public IHttpActionResult Delete(string id, [FromBody]DeleteBody body)
+        {
+            if (string.IsNullOrEmpty(id)) throw new ArgumentNullException(nameof(id));
+            if (body == null) throw new ArgumentNullException(nameof(body));
+
+            var perf = PerfCounter.NewThenCheck(this.ToString() + "." + MethodBase.GetCurrentMethod().Name);
+            var fulfillmentPath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Fulfillments);
+            var antiSpamResult = PassAntiSpamDefender(fulfillmentPath, AuthMode.SimpleDeletion);
+
+            if (!antiSpamResult.Valid) return DtoResultV5.Fail(BadRequest, antiSpamResult.Message);
+            perf.Check("anti spam end");
+
+            SyncRoutine(fulfillmentPath);
+            perf.Check("sync routine end");
+
+            var fulfillments = ReadLskjson<Guid, RoutineFulfillment>(fulfillmentPath, CollectLskjsonLineIncludeDeleted);
+            perf.Check("read fulfillment end");
+
+            var inputUid = Guid.Parse(id);
+            var fulfill = fulfillments.FirstOrDefault(f => f.Uid == inputUid);
+
+            if (fulfill == null) return DtoResultV5.Fail(BadRequest, "Routine not found, may already deleted, please refresh page");
+
+            fulfill.IsDeleted = true;
+            fulfill.DeleteAt = DateTime.Now;
+            fulfill.DeletedBy = "fixme-delete";
+            fulfill.DeleteReason = body.Reason;
+
+            WriteToFile(fulfillmentPath, fulfillments);
+            perf.End("override fulfill end", true);
+            return DtoResultV5.Success(Json, DtoRoutine.From(fulfill, false));
+        }
+
+        [HttpDelete]
+        [Route("{parentId:guid}/history/{id:guid}")]
+        public IHttpActionResult DeleteHistoryRecord(string parentId, string id, [FromBody]DeleteHistoryBody body)
+        {
+            if (string.IsNullOrEmpty(parentId)) throw new ArgumentNullException(nameof(parentId));
+            if (body == null) throw new ArgumentNullException(nameof(body));
+            if (body.Kind != Constants.LskArchived && body.Kind != Constants.LskStaged) return DtoResultV5.Fail(BadRequest, $"unsupported deletion: '{body.Kind}'");
+
+
+            var perf = PerfCounter.NewThenCheck(this.ToString() + "." + MethodBase.GetCurrentMethod().Name);
+            var fulfillmentPath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Fulfillments);
+            var antiSpamResult = PassAntiSpamDefender(fulfillmentPath, AuthMode.SimpleDeletion);
+
+            if (!antiSpamResult.Valid) return DtoResultV5.Fail(BadRequest, antiSpamResult.Message);
+            perf.Check("anti spam end");
+
+            SyncRoutine(fulfillmentPath);
+            perf.Check("sync routine end");
+
+            var inputParentUid = Guid.Parse(parentId);
+            var inputUid = Guid.Parse(id);
+
+            string filePath = null;
+            List<ILskjsonLine> allRecords = null;
+            FulfillmentArchive history = null;
+
+            if (body.Kind == Constants.LskStaged)
+            {
+                filePath = fulfillmentPath;
+                var fulfillments = ReadLskjson<Guid, RoutineFulfillment>(filePath, CollectLskjsonLineIncludeDeleted);
+                var fulfill = fulfillments.FirstOrDefault(f => f.Uid == inputParentUid);
+
+                if (fulfill == null) return DtoResultV5.Fail(BadRequest, "Routine not found, may already deleted, please refresh page");
+                if (!fulfill.HasMigrated) return DtoResultV5.Fail(BadRequest, "Migrate routine first");
+                if (fulfill.StagedArchives == null || fulfill.StagedArchives.Length == 0) return DtoResultV5.Fail(BadRequest, "No staged history found, please refresh page");
+
+                allRecords = fulfillments.ToList<ILskjsonLine>();
+                history = fulfill.StagedArchives.FirstOrDefault(s => s.Uid == inputUid);
+            }
+            else if (body.Kind == Constants.LskArchived)
+            {
+                filePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Archives);
+                var historyRecords = ReadLskjson<Guid, FulfillmentArchive>(filePath, CollectLskjsonLineIncludeDeleted);
+                allRecords = historyRecords.ToList<ILskjsonLine>();
+                history = historyRecords.FirstOrDefault(h => h.ParentUid == inputParentUid && h.Uid == inputUid);
+            }
+
+            if (history == null) return DtoResultV5.Fail(BadRequest, $"No {body.Kind} history matches with provided id, please refresh page");
+
+            history.IsDeleted = true;
+            history.DeleteAt = DateTime.Now;
+            history.DeletedBy = "fixme-del";
+            history.DeleteReason = body.Reason;
+
+            WriteToFile(filePath, allRecords);
+            perf.End($"delete {body.Kind} history end", true);
+            return DtoResultV5.Success(Json, body.Kind);
+        }
+
+
 
         //----- helpers
         private ValidationResult PassSelfCheckingSequences(string routinePath, string configPath, string fulfillmentPath, bool creatFileIfMissing)
@@ -192,7 +334,6 @@ namespace LeoMaster6.Controllers
 
             if (!File.Exists(routinePath)) return ValidationResult.Fail("missing file: " + Path.GetFileName(routinePath));
             if (!File.Exists(configPath)) return ValidationResult.Fail("missing file: " + Path.GetFileName(configPath));
-            if (FileSizeGreaterThan(fulfillmentPath, Constants.LskMaxDBFileSizeKB)) return ValidationResult.Fail("file too large, file: " + Path.GetFileName(fulfillmentPath));
 
             var lines = File.ReadAllLines(configPath);
             if (!lines.Any(l => !string.IsNullOrEmpty(l))) return ValidationResult.Fail("missing preset config in file: " + Path.GetFileName(configPath));
@@ -202,6 +343,7 @@ namespace LeoMaster6.Controllers
                 var config = JsonConvert.DeserializeObject<IntrospectionConfig>(string.Join(string.Empty, lines));
                 if (config == null || config.Passcode < 1000 || string.IsNullOrWhiteSpace(config.AntiSpamToken)) return ValidationResult.Fail("config file not set. 0xe01");
                 if (config == null || config.AntiSpamToken == null || config.AntiSpamToken.Trim().Length < 4) return ValidationResult.Fail("config file not set. 0xe02");
+                if (FileSizeGreaterThan(fulfillmentPath, config.LskMaxDBFileSizeKB)) return ValidationResult.Fail("file too large, file: " + Path.GetFileName(fulfillmentPath));
             }
             catch (Exception e)
             {
@@ -215,13 +357,13 @@ namespace LeoMaster6.Controllers
             return ValidationResult.Success();
         }
 
-        private ValidationResult PassAntiSpamDefender(string fulfilmentPath, int maxSizeInKB, AuthMode mode)
+        private ValidationResult PassAntiSpamDefender(string fulfilmentPath, AuthMode mode)
         {
             var passcodePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Config);
-            return PassAntiSpamDefender(fulfilmentPath, maxSizeInKB, passcodePath, mode);
+            return PassAntiSpamDefender(fulfilmentPath, passcodePath, mode);
         }
 
-        private ValidationResult PassAntiSpamDefender(string fulfilmentPath, int maxSizeInKB, string configPath, AuthMode mode)
+        private ValidationResult PassAntiSpamDefender(string fulfilmentPath, string configPath, AuthMode mode)
         {
             Request.Headers.TryGetValues("lsk-introspection-god", out IEnumerable<string> passcodes);
             var inputPass = passcodes?.FirstOrDefault() ?? string.Empty;
@@ -243,23 +385,25 @@ namespace LeoMaster6.Controllers
 
                 var offsetLength = 2;
                 var offsetString = inputPass.Substring(4, offsetLength);
-
-                if (!int.TryParse(offsetString, out int _)) return ValidationResult.Fail("fail to parse value");
-                if (FileSizeGreaterThan(fulfilmentPath, maxSizeInKB)) return ValidationResult.Fail("insufficient fulfillment storage");
-                if (!File.Exists(configPath)) return ValidationResult.Fail("internal server error - not fully initialized");
-
                 var lines = File.ReadAllLines(configPath);
                 var configLine = lines.FirstOrDefault(l => !string.IsNullOrEmpty(l));
 
                 if (string.IsNullOrEmpty(configLine)) return ValidationResult.Fail("internal server error - not fully initialized");
-
                 var config = JsonConvert.DeserializeObject<IntrospectionConfig>(string.Join(string.Empty, lines));
+
+                if (!int.TryParse(offsetString, out int _)) return ValidationResult.Fail("fail to parse value");
+                if (FileSizeGreaterThan(fulfilmentPath, config.LskMaxDBFileSizeKB)) return ValidationResult.Fail("insufficient fulfillment storage");
+                if (!File.Exists(configPath)) return ValidationResult.Fail("internal server error - not fully initialized");
 
                 if (mode == AuthMode.Simple)
                 {
                     var pass = config.Passcode.ToString();
 
-                    if (!inputPass.Contains(pass)) return ValidationResult.Fail("spam. 0xe10");
+                    if (!inputPass.Contains(pass)) return ValidationResult.Fail("spam. 0x10");
+                }
+                else if(mode == AuthMode.SimpleDeletion)
+                {
+                    if (!inputPass.Contains(config.DeletionToken)) return ValidationResult.Fail("spam. 0x11");
                 }
                 else if (mode == AuthMode.Standard)
                 {
@@ -279,7 +423,7 @@ namespace LeoMaster6.Controllers
                     {
                         var unitLength = Math.Min(2, config.AntiSpamToken.Length - i);
 
-                        if (!inputSuffix.Contains(config.AntiSpamToken.Substring(i, unitLength))) return ValidationResult.Fail("spam. 0xe10");
+                        if (!inputSuffix.Contains(config.AntiSpamToken.Substring(i, unitLength))) return ValidationResult.Fail("spam. 0x20");
                     }
                 }
 
@@ -303,7 +447,7 @@ namespace LeoMaster6.Controllers
 
             if (!File.Exists(fulfillmentPath)) using (File.Create(fulfillmentPath)) { };
 
-            var fulfillments = ReadLskjson<Guid, RoutineFulfillment>(fulfillmentPath, CollectLskjsonLineDefault);
+            var fulfillments = ReadLskjson<Guid, RoutineFulfillment>(fulfillmentPath, CollectLskjsonLineIncludeDeleted);
             var foundFulfillments = new HashSet<string>();
 
             //remove obsoleted
@@ -338,7 +482,7 @@ namespace LeoMaster6.Controllers
                     {
                         Uid = Guid.NewGuid(),
                         Name = kvp.Value[0],
-                        CreateBy = "<fixme>",
+                        CreateBy = "fixme-new",
                         CreateAt = DateTime.Now
                     });
                 }
@@ -377,7 +521,7 @@ namespace LeoMaster6.Controllers
         {
             var perf = PerfCounter.NewThenCheck(this.ToString() + "." + MethodBase.GetCurrentMethod().Name);
             var fulfillmentPath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Fulfillments);
-            var antiSpamResult = PassAntiSpamDefender(fulfillmentPath, Constants.LskMaxDBFileSizeKB, authMode);
+            var antiSpamResult = PassAntiSpamDefender(fulfillmentPath, authMode);
 
             if (!antiSpamResult.Valid) //return DtoResultV5.Fail(BadRequest, antiSpamResult.Message);
             {
@@ -388,7 +532,7 @@ namespace LeoMaster6.Controllers
             SyncRoutine(fulfillmentPath);
             perf.Check("sync routine end");
 
-            var fulfillments = ReadLskjson<Guid, RoutineFulfillment>(fulfillmentPath, CollectLskjsonLineDefault);
+            var fulfillments = ReadLskjson<Guid, RoutineFulfillment>(fulfillmentPath, CollectLskjsonLineIncludeDeleted);
             perf.End("read fulfillment end", true);
 
             return fulfillments;
@@ -398,6 +542,7 @@ namespace LeoMaster6.Controllers
         {
             None,
             Simple,
+            SimpleDeletion,
             Standard
         }
     }
