@@ -213,10 +213,16 @@ namespace LeoMaster6.Controllers
             return DtoResultV5.Success(Json, DtoRoutine.From(fulfill, false));
         }
 
+        [HttpDelete]
+        [Route("{id:guid}")]
+        public IHttpActionResult Delete(string id, string reason)
+        {
+            return this.Delete2(id, new DeleteBody() { Reason = reason });
+        }
 
         [HttpDelete]
         [Route("{id:guid}")]
-        public IHttpActionResult Delete(string id, [FromBody]DeleteBody body)
+        public IHttpActionResult Delete2(string id, [FromBody]DeleteBody body)
         {
             if (string.IsNullOrEmpty(id)) throw new ArgumentNullException(nameof(id));
             if (body == null) throw new ArgumentNullException(nameof(body));
@@ -251,7 +257,14 @@ namespace LeoMaster6.Controllers
 
         [HttpDelete]
         [Route("{parentId:guid}/history/{id:guid}")]
-        public IHttpActionResult DeleteHistoryRecord(string parentId, string id, [FromBody]DeleteHistoryBody body)
+        public IHttpActionResult DeleteHistoryRecord(string parentId, string id, string reason, string kind)
+        {
+            return DeleteHistoryRecord2(parentId, id, new DeleteHistoryBody() { Reason = reason, Kind = kind });
+        }
+
+        [HttpDelete]
+        [Route("{parentId:guid}/history/{id:guid}")]
+        public IHttpActionResult DeleteHistoryRecord2(string parentId, string id, [FromBody]DeleteHistoryBody body)
         {
             if (string.IsNullOrEmpty(parentId)) throw new ArgumentNullException(nameof(parentId));
             if (body == null) throw new ArgumentNullException(nameof(body));
@@ -359,12 +372,6 @@ namespace LeoMaster6.Controllers
 
         private ValidationResult PassAntiSpamDefender(string fulfilmentPath, AuthMode mode)
         {
-            var passcodePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Config);
-            return PassAntiSpamDefender(fulfilmentPath, passcodePath, mode);
-        }
-
-        private ValidationResult PassAntiSpamDefender(string fulfilmentPath, string configPath, AuthMode mode)
-        {
             Request.Headers.TryGetValues("lsk-introspection-god", out IEnumerable<string> passcodes);
             var inputPass = passcodes?.FirstOrDefault() ?? string.Empty;
 
@@ -375,16 +382,14 @@ namespace LeoMaster6.Controllers
 
             if(!string.IsNullOrEmpty(inputPass))
             {
-                var inputMaxLength = 12;
+                var inputMaxLength = 24;
 
-                if (inputPass.Length > inputMaxLength) return ValidationResult.Fail("input too long");
-                if (!int.TryParse(inputPass, out int _)) return ValidationResult.Fail("fail to parse value");
-
-
-                if (inputPass.Length < 6) return ValidationResult.Fail("config missing or incorrect");
+                if (inputPass.Length > inputMaxLength) return ValidationResult.Fail("input lsk too long");
+                if (inputPass.Length < 6) return ValidationResult.Fail("input lsk to short");
 
                 var offsetLength = 2;
                 var offsetString = inputPass.Substring(4, offsetLength);
+                var configPath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Config);
                 var lines = File.ReadAllLines(configPath);
                 var configLine = lines.FirstOrDefault(l => !string.IsNullOrEmpty(l));
 
@@ -397,9 +402,7 @@ namespace LeoMaster6.Controllers
 
                 if (mode == AuthMode.Simple)
                 {
-                    var pass = config.Passcode.ToString();
-
-                    if (!inputPass.Contains(pass)) return ValidationResult.Fail("spam. 0x10");
+                    if (!inputPass.Contains(config.Passcode.ToString())) return ValidationResult.Fail("spam. 0x10");
                 }
                 else if(mode == AuthMode.SimpleDeletion)
                 {
