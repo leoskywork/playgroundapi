@@ -32,8 +32,20 @@ namespace LeoMaster6.Models
 
         public static DtoRoutine From(RoutineFulfillment fulfill, bool includeHistory)
         {
-            var lastFulfill = fulfill.StagedArchives?.Length > 0 ? fulfill.StagedArchives[fulfill.StagedArchives.Length - 1] : null;
             var history = includeHistory ? fulfill.StagedArchives?.Select(h => DtoFulfillmentArchive.From(h))?.ToArray() : null;
+            FulfillmentArchive lastFulfill = null;
+
+            if (fulfill.StagedArchives?.Length > 0)
+            {
+                for (int i = fulfill.StagedArchives.Length - 1; i >= 0; i--)
+                {
+                    if (fulfill.StagedArchives[i].IsDeleted == null || !fulfill.StagedArchives[i].IsDeleted.Value)
+                    {
+                        lastFulfill = fulfill.StagedArchives[i];
+                        break;
+                    }
+                }
+            }
 
             return new DtoRoutine()
             {
