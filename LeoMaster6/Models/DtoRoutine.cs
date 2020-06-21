@@ -17,6 +17,8 @@ namespace LeoMaster6.Models
         public string LastRemark { get; set; }
         public DtoFulfillmentArchive[] HistoryFulfillments { get; set; }
         public bool HasArchived { get; set; }
+        public bool EnableSchedule { get; set; }
+        public int? RecursiveIntervalDays { get; set; }
 
         //optional fields
         public string CreateBy { get; set; }
@@ -55,6 +57,8 @@ namespace LeoMaster6.Models
                 LastRemark = lastFulfill?.Remark,
                 HistoryFulfillments = history,
                 HasArchived = fulfill.HasArchived,
+                EnableSchedule = fulfill.EnableSchedule,
+                RecursiveIntervalDays = fulfill.RecursiveIntervalDays,
                 CreateAt = fulfill.CreateAt,
                 CreateBy = fulfill.CreateBy,
                 IsDeleted = fulfill.IsDeleted,
@@ -112,6 +116,11 @@ namespace LeoMaster6.Models
         /// used to replace HistoryFulfillments
         /// </summary>
         public FulfillmentArchive[] StagedArchives { get; set; }
+
+
+        public bool EnableSchedule { get; set; }
+        public int? RecursiveIntervalDays { get; set; }
+
 
         //optional fields
         public string CreateBy { get; set; }

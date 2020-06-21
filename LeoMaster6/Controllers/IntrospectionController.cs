@@ -24,6 +24,13 @@ namespace LeoMaster6.Controllers
             public string LastRemark { get; set; }
         }
 
+        public class PutRecursiveBody
+        {
+            public string Name { get; set; }
+            public bool Enable { get; set; }
+            public int? IntervalDays { get; set; }
+        }
+
         public class DeleteBody
         {
             public string Name { get; set; }
@@ -206,6 +213,40 @@ namespace LeoMaster6.Controllers
 
             //fulfill.StagedArchives = fulfill.StagedArchives.Concat(new[] { record }).ToArray();
             fulfill.UpdateBy = "fixme-update";
+            fulfill.UpdateAt = DateTime.Now;
+
+            WriteToFile(fulfillmentPath, fulfillments);
+            perf.End("override fulfill end", true);
+            return DtoResultV5.Success(Json, DtoRoutine.From(fulfill, false));
+        }
+
+        [HttpPut]
+        [Route("{id:guid}/recursive")]
+        public IHttpActionResult PutRecursive(string id, [FromBody]PutRecursiveBody body)
+        {
+            if (id == null) throw new ArgumentNullException(nameof(id));
+            if (body == null) throw new ArgumentNullException(nameof(body));
+            if (body.Enable && (body.IntervalDays ?? 0) < 1) throw new ArgumentException($"invalid recursive interval {body.IntervalDays}");
+
+            var perf = PerfCounter.NewThenCheck(this.ToString() + "." + MethodBase.GetCurrentMethod().Name);
+            var fulfillmentPath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Fulfillments);
+         
+            SyncRoutine(fulfillmentPath);
+            perf.Check("sync routine end");
+
+            var fulfillments = ReadLskjson<Guid, RoutineFulfillment>(fulfillmentPath, CollectLskjsonLineIncludeDeleted);
+            perf.Check("read fulfillment end");
+
+            var inputUid = Guid.Parse(id);
+            var fulfill = fulfillments.FirstOrDefault(f => f.Uid == inputUid);
+            if (fulfill == null) return DtoResultV5.Fail(BadRequest, "expired data found, please reload page first.");
+
+            fulfill.EnableSchedule = body.Enable;
+            if (body.Enable)
+            {
+                fulfill.RecursiveIntervalDays = body.IntervalDays;
+            }
+            fulfill.UpdateBy = "fixme-put-rec";
             fulfill.UpdateAt = DateTime.Now;
 
             WriteToFile(fulfillmentPath, fulfillments);
