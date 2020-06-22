@@ -49,6 +49,14 @@ namespace LeoMaster6.Models
                 }
             }
 
+            if (lastFulfill == null && fulfill.HasArchived)
+            {
+                //fixme, read from archive file, do this outside this method
+                //also change front end logic once do it, get lastFulfill directly instead of search among staged items?
+                //  - exception when user just delete a history item and we want to repaint UI
+                //    may also return last fulfill id ? so we can tall if last fulfill still valid after the delete
+            }
+
             return new DtoRoutine()
             {
                 Uid = fulfill.Uid,
