@@ -201,10 +201,11 @@ namespace LeoMaster6.Controllers
 
                 if (staged.Count >= Constants.LskFulfillmentActiveRecords + Constants.LskFulfillmentArchiveUnit)
                 {
-                    var archiveUnit = staged.GetRange(Constants.LskFulfillmentActiveRecords, Constants.LskFulfillmentArchiveUnit);
+                    const int startIndex = 0;
+                    var archiveUnit = staged.GetRange(startIndex, Constants.LskFulfillmentArchiveUnit);
                     var archivePath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Archives);
                     AppendObjectToFile(archivePath, archiveUnit.ToArray());
-                    staged.RemoveRange(Constants.LskFulfillmentActiveRecords, Constants.LskFulfillmentArchiveUnit);
+                    staged.RemoveRange(startIndex, archiveUnit.Count);
                     fulfill.HasArchived = true;
                 }
 
