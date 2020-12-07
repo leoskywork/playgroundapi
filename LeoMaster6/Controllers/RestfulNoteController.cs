@@ -18,6 +18,7 @@ namespace LeoMaster6.Controllers
             public string Data { get; set; }
         }
 
+        //have to set "Route" attribute here in order to make "RoutePrefix" working
         [Route("")]
         public IHttpActionResult Get()
         {

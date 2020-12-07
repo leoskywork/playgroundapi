@@ -31,7 +31,7 @@ namespace LeoMaster6.ErrorHandling
             {
                 context.Response = new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError)
                 {
-                    ReasonPhrase = "Oops! " + EnsureSafePhrase(context.Exception.Message) + EnsureSafePhrase(context.Response.ReasonPhrase)
+                    ReasonPhrase = "Oops! " + EnsureSafePhrase(context.Exception.Message) + EnsureSafePhrase(context.Response?.ReasonPhrase)
                 };
 
                 //?? partial of the error message(Chinese) on postman are gibberish, not sure why
@@ -42,6 +42,8 @@ namespace LeoMaster6.ErrorHandling
 
         private static string EnsureSafePhrase(string message)
         {
+            if (message == null) return "(input param is null)";
+
             var newMessage = message.Replace(Environment.NewLine, " -- ");
             return newMessage.Substring(0, Math.Min(500, newMessage.Length));
         }
