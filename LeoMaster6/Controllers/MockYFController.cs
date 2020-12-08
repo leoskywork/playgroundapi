@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Web.Http;
 
 namespace LeoMaster6.Controllers
@@ -131,14 +132,24 @@ namespace LeoMaster6.Controllers
 
         [HttpGet]
         [Route("pos/circle")]
-        public IHttpActionResult Get__1()
+        public IHttpActionResult Get__1(double longitude, double latitude)
         {
-            // return WrapResultJson(new object[] { });
+            double allowOffset = 0.15;
+
+            if(Math.Abs(longitude - 120.2) > allowOffset || Math.Abs(latitude - 30.2) > allowOffset)
+            {
+                return WrapResultJson(new object[] { });
+            }
+
+            var a = Math.Abs(longitude - 120.2);
+            var b = Math.Abs(latitude - 30.2);
+            var diff = a * a + b * b;
+            var dis = (DateTime.Now.Second % 30) * 0.2; //diff * 100;
 
             var driver = new
             {
                 content = MockData.GetDriver(),
-                distance = MockData.GetGeoDistance(1.5)
+                distance = MockData.GetGeoDistance(2.0 + dis )
             };
 
             var driver2 = new
@@ -234,7 +245,7 @@ namespace LeoMaster6.Controllers
                     jobNum = default(string), //serial number, current working task(order number)
                     level = 4, //rating
 
-                    point = new { x = 120.17, y = 30.26}, //west lake, HZ
+                    point = new { x = 120.17, y = 30.27}, //west lake, HZ
                     status = "FREE",
                     serviceTimes = 1585 //order count
                 };
