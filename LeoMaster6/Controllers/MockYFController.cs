@@ -61,7 +61,7 @@ namespace LeoMaster6.Controllers
         [Route("customer/login")]
         public IHttpActionResult Get__()
         {
-            var user = MockUser.GetOne();
+            var user = MockData.GetUser();
             return WrapResultJson(new { USER = user });
         }
 
@@ -69,18 +69,15 @@ namespace LeoMaster6.Controllers
         [Route("account/getCurrentUser")]
         public IHttpActionResult Get___()
         {
-            var user = MockUser.GetOne();
+            var user = MockData.GetUser();
             return WrapResultJson(user);
         }
-
-
-       
 
         [HttpPost]
         [Route("account/getBalance")]
         public IHttpActionResult Get____()
         {
-            return WrapResultJson(MockUser.GetBalance());
+            return WrapResultJson(MockData.GetBalance());
         }
 
         [HttpGet]
@@ -90,15 +87,71 @@ namespace LeoMaster6.Controllers
             return WrapResultJson("demo transaction list", false, null, true);
         }
 
+        [HttpPost]
+        [Route("coupon/searchCurrent")]
+        public IHttpActionResult Get__100()
+        {
+            return WrapResultJson(MockData.GetCouponList());
+        }
+
+        [HttpGet]
+        [Route("shared/listence")]
+        public IHttpActionResult Get__101()
+        {
+            return WrapResultJson("demo service agreement", false, null, true);
+        }
+
+        [HttpGet]
+        [Route("setting/system/getCustomServiceTel")]
+        public IHttpActionResult Get__102()
+        {
+            return WrapResultJson("18612341234");
+        }
+
         #endregion
 
-        private class MockUser
+        #region Mocking - return null data
+
+        [HttpGet]
+        [Route("pos/circle")]
+        public IHttpActionResult Get__1()
+        {
+            // return WrapResultJson(new object[] { });
+            return WrapResultJson(default(object));
+        }
+
+        [HttpPost]
+        [Route("driveOrder/realtime")]
+        public IHttpActionResult Get__2()
+        {
+            System.Threading.Thread.Sleep(2000);
+            return WrapResultJson(new object[] { });
+        }
+
+        [HttpPost]
+        [Route("driveOrder/history")]
+        public IHttpActionResult Get__3()
+        {
+            System.Threading.Thread.Sleep(2000);
+            return WrapResultJson(new object[] { });
+        }
+
+        [HttpGet]
+        [Route("account/logout")]
+        public IHttpActionResult Get__4()
+        {
+            return WrapResultJson(default(object));
+        }
+
+        #endregion
+
+        private class MockData
         {
             internal readonly static double avaiBalance = 200;  //can withdraw to bank card
             internal readonly static double unavaiBalance = 100; //can not withdraw to bank card
 
 
-            public static object GetOne()
+            public static object GetUser()
             {
                 return new
                 {
@@ -121,6 +174,55 @@ namespace LeoMaster6.Controllers
             {
                 return avaiBalance + unavaiBalance;
             }
+
+            public static object GetCouponList()
+            {
+                var one = new
+                {
+                    identity = 100,
+                    type = "fixed",
+                    coupon = 10,
+                    startTime = 1577808000000, //2020-1-1
+                    endTime = default(object),
+                    user = default(object),
+                    beUsed = false
+                };
+
+                var two = new
+                {
+                    identity = 102,
+                    type = "fixed",
+                    coupon = 20,
+                    startTime = 1585843200000, //2020-5-1
+                    endTime = default(object),
+                    user = default(object),
+                    beUsed = false
+                };
+
+                var three = new
+                {
+                    identity = 103,
+                    type = "fixed",
+                    coupon = 199,
+                    startTime = 1585843200000, //2020-4-3
+                    endTime = 1588435200000, //2020-5-3
+                    user = default(object),
+                    beUsed = false
+                };
+
+                var four = new
+                {
+                    identity = 104,
+                    type = "fixed",
+                    coupon = 99,
+                    startTime = 1585843200000, //2020-4-3
+                    endTime = 1617379200000, //2021-4-3
+                    user = default(object),
+                    beUsed = false
+                };
+
+                return new List<object>() { one, two, three, four };
+            }
         }
 
 
@@ -132,7 +234,7 @@ namespace LeoMaster6.Controllers
 
         public static object WrapResult<T>(T data, bool hasError = false, string message = null, bool simpleVersion = false)
         {
-            if (simpleVersion) return new { data, message };
+            if (simpleVersion) return new { data };
 
             return new
             {
