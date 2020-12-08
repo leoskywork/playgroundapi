@@ -80,11 +80,27 @@ namespace LeoMaster6.Controllers
             return WrapResultJson(MockData.GetBalance());
         }
 
+        [HttpPost]
+        [Route("setting/fee/getPriceByCityAndDistance")]
+        public IHttpActionResult Get__________()
+        {
+            return WrapResultJson(30.0 + System.DateTime.Now.Second % 30);
+        }
+
         [HttpGet]
         [Route("account/record")]
         public IHttpActionResult Get_____()
         {
+            System.Threading.Thread.Sleep(1500);
             return WrapResultJson("demo transaction list", false, null, true);
+        }
+
+        [HttpGet]
+        [Route("setting/fee/feeDescribeByCityName")]
+        public IHttpActionResult Get______()
+        {
+            System.Threading.Thread.Sleep(1500);
+            return WrapResultJson("demo fee rules", false, null, true);
         }
 
         [HttpPost]
@@ -98,6 +114,7 @@ namespace LeoMaster6.Controllers
         [Route("shared/listence")]
         public IHttpActionResult Get__101()
         {
+            System.Threading.Thread.Sleep(1500);
             return WrapResultJson("demo service agreement", false, null, true);
         }
 
@@ -117,14 +134,29 @@ namespace LeoMaster6.Controllers
         public IHttpActionResult Get__1()
         {
             // return WrapResultJson(new object[] { });
-            return WrapResultJson(default(object));
+
+            var driver = new
+            {
+                content = MockData.GetDriver(),
+                distance = MockData.GetGeoDistance(1.5)
+            };
+
+            var driver2 = new
+            {
+                content = MockData.GetDriver2(),
+                distance = MockData.GetGeoDistance(1.0)
+            };
+
+            var drivers = new object[] { driver, driver2 };
+
+            return WrapResultJson(new { content = drivers});
         }
 
         [HttpPost]
         [Route("driveOrder/realtime")]
         public IHttpActionResult Get__2()
         {
-            System.Threading.Thread.Sleep(2000);
+            System.Threading.Thread.Sleep(500);
             return WrapResultJson(new object[] { });
         }
 
@@ -132,7 +164,7 @@ namespace LeoMaster6.Controllers
         [Route("driveOrder/history")]
         public IHttpActionResult Get__3()
         {
-            System.Threading.Thread.Sleep(2000);
+            //System.Threading.Thread.Sleep(1000);
             return WrapResultJson(new object[] { });
         }
 
@@ -160,13 +192,62 @@ namespace LeoMaster6.Controllers
                     gender = "man",
                     tel = "18612341234",
                     // iconUrl = "https://leoskywork.com/img/seagull480.jpg",
-                    iconUrl = "image/seagull480.jpg",
+                    iconUrl = "image/seagull240.jpg",
                     availableBalance = avaiBalance,
                     unavailableBalance = unavaiBalance,
                     regTime = 1577808000000,
                     source = "testing",
                     balance = GetBalance(),
                     deleted = false
+                };
+            }
+
+            public static object GetDriver()
+            {
+                return new
+                {
+                    identity = 500,
+                    name = "张三",
+                    gender = "man",
+                    tel = "17600040004",
+                    iconUrl = "demo-driver",
+                    drivingLicenseStartDate = 1272643200000, //2010-5-1
+                    jobNum = default(string), //serial number, current working task(order number)
+                    level = 5, //rating
+
+                    point = new { x = 120.1867, y = 30.2483 }, //west lake, HZ
+                    status = "FREE",
+                    serviceTimes = 567 //order count
+                };
+            }
+
+            public static object GetDriver2()
+            {
+                return new
+                {
+                    identity = 501,
+                    name = "李四",
+                    gender = "woman",
+                    tel = "17600050005",
+                    iconUrl = default(object), //"demo-driver2",
+                    drivingLicenseStartDate = 1396281600000, //2014-5-1
+                    jobNum = default(string), //serial number, current working task(order number)
+                    level = 4, //rating
+
+                    point = new { x = 120.17, y = 30.26}, //west lake, HZ
+                    status = "FREE",
+                    serviceTimes = 1585 //order count
+                };
+            }
+
+            public static object GetGeoDistance(double distance)
+            {
+                return new
+                {
+                   value = distance, //direct distance ??
+                   metric = "km", //??
+                   unit = "km",
+                   normalizedValue = distance + 0.4 //??
                 };
             }
 
