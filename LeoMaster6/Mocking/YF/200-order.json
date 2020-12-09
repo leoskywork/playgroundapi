@@ -1,0 +1,157 @@
+﻿{
+  "identity": 200,
+  "orderNo": "17081300540200",
+  "creator": {
+    "identity": 11,
+    "name": "刘立想",
+    "gender": "man",
+    "tel": "18612341234",
+    "iconUrl": "597ca84445609d2a3f86fac5",
+    "availableBalance": 2000.00,
+    "unavailableBalance": 100.00,
+    "regTime": 1577808000000,
+    "source": "from_app",
+    "balance": 2100.00,
+    "deleted": false
+  },
+  "driver": {
+    "identity": 501,
+    "name": "李四",
+    "gender": "woman",
+    "tel": "17600050005",
+    "iconUrl": "5957bd7ecda1316d7bd80bb4",
+    "availableBalance": 0,
+    "unavailableBalance": 0,
+    "jobNum": "U00100001",
+    "type": "full_time",
+    "entryTime": null,
+    "idCardNo": "342578457895487455",
+    "idCardPicUrl": "591467260124332cfb9470a1",
+    "drivingLicensePicUrl": "595702e8cda19a8bff16036d",
+    "residencePermitPicUrl": "591467310124332cfb9470a2",
+    "travelTool": "自行车",
+    "zone": {
+      "identity": 100,
+      "name": "杭州市",
+      "feePlan": {
+        "identity": 1,
+        "name": "方案一",
+        "details": [
+          {
+            "identity": 1,
+            "startHour": 8,
+            "startMinute": 30,
+            "endHour": 23,
+            "endMinute": 30,
+            "initialPrice": 35.00,
+            "initialKilometers": 10,
+            "freeWaitMinute": 10,
+            "waitPricePerMinute": 1.00,
+            "priceUnit": 10,
+            "unitPrice": 20.00,
+            "describe": "每日08:30 - 23:30\r\n起步10公里内：35.00元\r\n超过10公里：每10公里加收20.00元（不足10公里按10公里计算）\r\n免费等待：10分钟\r\n超过10分钟：每分钟加收1.00元"
+          }
+        ],
+        "deleted": false
+      },
+      "root": false,
+      "deleted": false
+    },
+    "drivingLicenseStartDate": 1396281600000,
+    "serviceTimes": 1585,
+    "point": null,
+    "status": "BUSY",
+    "level": 4,
+    "balance": 0,
+    "deleted": false
+  },
+  "status": "canceled",
+  "createOrderNode": {
+    "identity": 161,
+    "lng": 120.1867264737466,
+    "lat": 30.24837524455529,
+    "addr": null,
+    "locDate": 1606787350000
+  },
+  "planStartLoc": {
+    "identity": 162,
+    "lng": 120.1863494873047,
+    "lat": 30.2489422302246,
+    "addr": "龙翔大厦",
+    "locDate": 1606752300000
+  },
+  "planEndLoc": {
+    "identity": 1620,
+    "lng": 120.1863494873047,
+    "lat": 30.2489422302246,
+    "addr": "中国杭州市西湖区东坡路99号",
+    "locDate": 1608887350000
+  },
+  "pickOrderNode": {
+    "identity": 163,
+    "lng": 120.186257,
+    "lat": 30.248416,
+    "addr": "中国杭州市西湖区东坡路66号",
+    "locDate": 1606662400000
+  },
+  "startWaitNode": {
+    "identity": 164,
+    "lng": 120.186545,
+    "lat": 30.248641,
+    "addr": "中国杭州市西湖区东坡路70号",
+    "locDate": 1606752500000
+  },
+  "startOrderNode": null,
+  "finishOrderNode": null,
+  "zone": {
+    "identity": 100,
+    "name": "杭州市",
+    "feePlan": {
+      "identity": 1,
+      "name": "方案一",
+      "details": [
+        {
+          "identity": 1,
+          "startHour": 8,
+          "startMinute": 30,
+          "endHour": 23,
+          "endMinute": 30,
+          "initialPrice": 35.00,
+          "initialKilometers": 10,
+          "freeWaitMinute": 10,
+          "waitPricePerMinute": 1.00,
+          "priceUnit": 10,
+          "unitPrice": 20.00,
+          "describe": "每日08:30 - 23:30\r\n起步10公里内：35.00元\r\n超过10公里：每10公里加收20.00元（不足10公里按10公里计算）\r\n免费等待：10分钟\r\n超过10分钟：每分钟加收1.00元"
+        }
+      ],
+      "deleted": false
+    },
+    "root": false,
+    "deleted": false
+  },
+  "totalPrice": 58.00,
+  "chargeDetail": null,
+  "type": "realtime",
+  "feePlan": null,
+  "commission": 0.1,
+  "distance": 2.0,
+  "createBy": "customer",
+  "paymentTime": null,
+  "paymentBy": null,
+  "payChannel": null,
+  "canceledTime": 1606752500000,
+  "canceledBy": "customer",
+  "canceledReason": "",
+  "baoXianMoney": 0.00,
+  "qiBuMoney": 0.00,
+  "dengDaiMoney": 0.00,
+  "dengDaiMinute": 0,
+  "liChengMoney": 0.00,
+  "liChengMinute": 0,
+  "faPiao": false,
+  "coupon": null,
+  "profit": 0.00,
+  "profit4Driver": 0.00,
+  "deleted": false
+}

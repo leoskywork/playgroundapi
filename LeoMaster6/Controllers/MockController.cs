@@ -1,20 +1,16 @@
-﻿using LeoMaster6.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
-using System.Web.Http;
+﻿using System.IO;
+using System.Reflection;
 
 namespace LeoMaster6.Controllers
 {
-    [RoutePrefix("mock")]
-    public class MockController: BaseController
+    public class MockController : BaseController
     {
-        [HttpGet]
-        [Route("todos")]
-        public IHttpActionResult GetTodoList()
+        protected string GetMockingDir(string subDir)
         {
-            return DtoResultV5.Success(Json, new string[] { });
+           // string dllDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            string dllDir = System.AppDomain.CurrentDomain.BaseDirectory;
+
+            return string.IsNullOrWhiteSpace(subDir) ? Path.Combine(dllDir, "Mocking") : Path.Combine(dllDir, "Mocking", subDir);
         }
     }
 }
