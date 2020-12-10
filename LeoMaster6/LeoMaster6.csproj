@@ -109,8 +109,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Global.asax" />
-    <Content Include="Mocking\YF\200-order.json" />
-    <None Include="Mocking\YF\100-order.json" />
+    <Content Include="Mocking\YF\102-order.json" />
     <Content Include="Web.config">
       <SubType>Designer</SubType>
     </Content>
@@ -147,8 +146,15 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="ErrorHandling\log4net.config" />
-    <Content Include="Mocking\YF\299-order.json" />
-    <Content Include="Mocking\YF\201-order.json" />
+    <Content Include="Mocking\YF\199-order.json" />
+    <Content Include="Mocking\YF\101-order.json" />
+    <Content Include="Mocking\YF\100-order.json" />
+    <Content Include="Mocking\YF\300-user.json" />
+    <Content Include="Mocking\YF\400-driver.json" />
+    <Content Include="Mocking\YF\401-driver.json" />
+    <Content Include="Mocking\YF\500-coupons.json" />
+    <Content Include="Mocking\YF\200-config.json" />
+    <Content Include="Mocking\YF\201-zone.json" />
     <None Include="packages.config">
       <SubType>Designer</SubType>
     </None>

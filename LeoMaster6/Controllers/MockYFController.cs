@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Web.Http;
 
@@ -65,7 +64,7 @@ namespace LeoMaster6.Controllers
         [Route("customer/login")]
         public IHttpActionResult Get__()
         {
-            var user = MockData.GetUser();
+            var user = ReadMockingFileAsObject(300, DoHackUserIfNeed);
             return WrapResultJson(new { USER = user });
         }
 
@@ -73,7 +72,7 @@ namespace LeoMaster6.Controllers
         [Route("account/getCurrentUser")]
         public IHttpActionResult Get___()
         {
-            var user = MockData.GetUser();
+            var user = ReadMockingFileAsObject(300, DoHackUserIfNeed);
             return WrapResultJson(user);
         }
 
@@ -81,7 +80,8 @@ namespace LeoMaster6.Controllers
         [Route("account/getBalance")]
         public IHttpActionResult Get____()
         {
-            return WrapResultJson(MockData.GetBalance());
+            var user = ReadMockingFileAsObject(300, DoHackUserIfNeed);
+            return WrapResultJson((float)user.AsJObject()["balance"]);
         }
 
         [HttpPost]
@@ -95,15 +95,44 @@ namespace LeoMaster6.Controllers
         [Route("account/record")]
         public IHttpActionResult Get_____()
         {
-            System.Threading.Thread.Sleep(1500);
+            System.Threading.Thread.Sleep(1000);
             return WrapResultJson("demo transaction list", false, null, true);
+        }
+
+        [HttpPost]
+        [Route("account/changeMyInfo")]
+        public IHttpActionResult Get__44([FromBody]Dictionary<string, string> kvp)
+        {
+            if (kvp["name"] == "reset")
+            {
+                _temp = new TempCache();
+                return WrapResultJson(default(object), true, "reset done");
+            }
+            else
+            {
+                _temp.NeedHackUser = true;
+                _temp.HackUserName = kvp["name"];
+                _temp.HackUserGender = kvp["gender"];
+
+                var newUserInfo = ReadMockingFileAsObject(300, DoHackUserIfNeed);
+                return WrapResultJson(newUserInfo);
+            }
+        }
+
+        [HttpGet]
+        [Route("account/logout")]
+        public IHttpActionResult Get__4()
+        {
+            _temp.OrderStatus = 0;
+            // _temp.ShowOrderHistory = false;
+            return WrapResultJson(default(object));
         }
 
         [HttpGet]
         [Route("setting/fee/feeDescribeByCityName")]
         public IHttpActionResult Get______()
         {
-            System.Threading.Thread.Sleep(1500);
+            System.Threading.Thread.Sleep(1000);
             return WrapResultJson("demo fee rules", false, null, true);
         }
 
@@ -111,14 +140,15 @@ namespace LeoMaster6.Controllers
         [Route("coupon/searchCurrent")]
         public IHttpActionResult Get__100()
         {
-            return WrapResultJson(MockData.GetCouponList());
+            System.Threading.Thread.Sleep(1000);
+            return WrapResultJson(ReadMockingFileAsObject(500));
         }
 
         [HttpGet]
         [Route("shared/listence")]
         public IHttpActionResult Get__101()
         {
-            System.Threading.Thread.Sleep(1500);
+            System.Threading.Thread.Sleep(1000);
             return WrapResultJson("demo service agreement", false, null, true);
         }
 
@@ -145,36 +175,32 @@ namespace LeoMaster6.Controllers
             _temp.CircleDriverCount = 1;
             _temp.OrderStatus = 1;
 
-            _temp.UseHack = true;
+            _temp.NeedHackOrder = true;
             _temp.HackOrderStartAddress = body.planStartLoc.addr;
             _temp.HackOrderStartTimeSince1970 = _temp.GetMSSince1970(DateTime.Now);
             _temp.HackOrderStartLat = body.planStartLoc.lat;
             _temp.HackOrderStartLng = body.planStartLoc.lng;
             _temp.HackOrderEndAddress = body.planEndLoc?.addr ?? null;
 
-            var fileObject = ReadMockingFileAsObject(100);
-
-            //var temp = ReadMockingFileAsObject(100);
-            //var temp2 = (Newtonsoft.Json.Linq.JObject)temp;
-
-            DoHackLocations(fileObject);
+            var config = ReadMockingFileAs<MockConfig>(200);
+            var fileObject = ReadMockingFileAsObject(config.create_order_file);
+            DoHackOrderIfNeed(fileObject);
 
             return WrapResultJson(fileObject);
         }
 
         [HttpPost]
         [Route("driveOrder/{id:int}/cancel")]
-        public IHttpActionResult Get__105(int id)
+        public IHttpActionResult Get__105(int id, [FromBody]CancelOrderBody body)
         {
             System.Threading.Thread.Sleep(100);
 
-            //string order = ReadMockingPath(100);
             _temp.CircleDriverCount = 2;
             _temp.OrderStatus = 110;
             _temp.ShowOrderHistory = true;
+            _temp.HackCancelReason = body.reason;
 
-            var fileObject = ReadMockingFileAsObject(200);
-            if (_temp.UseHack) { DoHackLocations(fileObject); }
+            var fileObject = ReadMockingFileAsObject(102, DoHackOrderIfNeed);
             _temp.AddHistory(fileObject);
 
 
@@ -189,7 +215,11 @@ namespace LeoMaster6.Controllers
         {
             public Location planStartLoc { get; set; }
             public Location planEndLoc { get; set; }
-            public Location startWaitNode { get; set; }
+        }
+
+        public class CancelOrderBody
+        {
+            public string reason { get; set; }
         }
 
         public class Location
@@ -201,40 +231,22 @@ namespace LeoMaster6.Controllers
             public long locDate { get; set; }
         }
 
-
-        private T ReadMockingFileAs<T>(int id)
+        private static T ReadMockingFileAs<T>(int id)
         {
-            string temp = ReadMockingFile(id);
-            //return Ok(order); //contains '\n' and '\t' when return this way
-
-            return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(temp);
+            string txt = ReadMockingFile("YF", id);
+            return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(txt);
         }
 
-        private object ReadMockingFileAsObject(int id)
+        private static object ReadMockingFileAsObject(int id, Action<object> postProcess = null)
         {
-            string temp = ReadMockingFile(id);
-            //return Ok(order); //contains '\n' and '\t' when return this way
+            var txt = ReadMockingFile("YF", id);
+            var fileObject = Newtonsoft.Json.JsonConvert.DeserializeObject(txt);
 
-            return Newtonsoft.Json.JsonConvert.DeserializeObject(temp);
+            postProcess?.Invoke(fileObject);
+
+            return fileObject;
         }
 
-        private string ReadMockingFile(int id)
-        {
-            string path = GetMockingPath(id);
-
-            if (string.IsNullOrEmpty(path)) throw new InvalidOperationException("no mocking file for " + id);
-
-            return File.ReadAllText(path);
-        }
-
-        private string GetMockingPath(int id)
-        {
-            string dir = GetMockingDir("YF");
-
-            string path = Directory.GetFiles(dir).FirstOrDefault(f => f.Replace('/', '@').Replace('\\', '@').Contains("@YF@" + id + "-"));
-
-            return path;
-        }
 
         [HttpGet]
         [Route("pos/circle")]
@@ -247,20 +259,12 @@ namespace LeoMaster6.Controllers
                 return WrapResultJson(new object[] { });
             }
 
-            var dis = (DateTime.Now.Second % 30) * 0.2; //diff * 100;
+            var dis = (DateTime.Now.Second % 30) * 0.2;
+            _temp.HackDriverDistance = dis + 1;
 
-            var driver = new
-            {
-                content = MockData.GetDriver(),
-                distance = MockData.GetGeoDistance(2.0 + dis)
-            };
-
-            var driver2 = new
-            {
-                content = MockData.GetDriver2(),
-                distance = MockData.GetGeoDistance(1.5)
-            };
-
+            var driver = ReadMockingFileAsObject(400, DoHackDriverDistance);
+            System.Threading.Thread.Sleep(DateTime.Now.Millisecond % 100);
+            var driver2 = ReadMockingFileAsObject(401, DoHackDriverDistance);
             var drivers = new object[] { driver, driver2 };
 
             if (_temp.CircleDriverCount == 1)
@@ -279,8 +283,7 @@ namespace LeoMaster6.Controllers
 
             if (_temp.OrderStatus == 1)
             {
-                var fileObject = ReadMockingFileAsObject(100);
-                if (_temp.UseHack) { DoHackLocations(fileObject); }
+                var fileObject = ReadMockingFileAsObject(100, DoHackOrderIfNeed);
 
                 return WrapResultJson(new object[] { fileObject });
             }
@@ -288,8 +291,10 @@ namespace LeoMaster6.Controllers
             return WrapResultEmptyArray();
         }
 
-        private static void DoHackLocations(object file)
+        private static void DoHackOrderIfNeed(object file)
         {
+            if (!_temp.NeedHackOrder) return;
+
             var fileObject = file as Newtonsoft.Json.Linq.JObject;
 
             fileObject["planStartLoc"]["addr"] = _temp.HackOrderStartAddress;
@@ -317,20 +322,38 @@ namespace LeoMaster6.Controllers
                 fileObject["createOrderNode"]["locDate"] = _temp.HackOrderStartTimeSince1970;
             }
 
-            fileObject["waitMinutes"] = (int) (_temp.GetMSSince1970(DateTime.Now) - _temp.HackOrderStartTimeSince1970) / 1000 / 60  + 1;
-            
+            fileObject["waitMinutes"] = (int)(_temp.GetMSSince1970(DateTime.Now) - _temp.HackOrderStartTimeSince1970) / 1000 / 60 + 1;
+            fileObject["canceledReason"] = _temp.HackCancelReason;
+        }
+
+        private static void DoHackUserIfNeed(object file)
+        {
+            if (!_temp.NeedHackUser) return;
+
+            var fileObject = file as Newtonsoft.Json.Linq.JObject;
+
+            fileObject["name"] = _temp.HackUserName;
+            fileObject["gender"] = _temp.HackUserGender;
+        }
+
+        private static void DoHackDriverDistance(object file)
+        {
+            var fileObject = file as Newtonsoft.Json.Linq.JObject;
+            var distance = _temp.HackDriverDistance + (DateTime.Now.Millisecond % 10) * 0.1;
+
+            fileObject["distance"]["value"] = distance;
+            fileObject["distance"]["normalizedValue"] = distance + 0.4;
         }
 
         [HttpPost] //should be GET, return order by id
         [Route("driveOrder/{id:int}")]
         public IHttpActionResult Get__202(int id)
         {
-            System.Threading.Thread.Sleep(1500);
+            System.Threading.Thread.Sleep(100);
 
             if (_temp.IdList.Contains(id))
             {
-                var fileObject = ReadMockingFileAsObject(id);
-                if (_temp.UseHack) { DoHackLocations(fileObject); }
+                var fileObject = ReadMockingFileAsObject(id, DoHackOrderIfNeed);
 
                 return WrapResultJson(fileObject);
             }
@@ -352,15 +375,6 @@ namespace LeoMaster6.Controllers
             return WrapResultEmptyArray();
         }
 
-        [HttpGet]
-        [Route("account/logout")]
-        public IHttpActionResult Get__4()
-        {
-            _temp.OrderStatus = 0;
-           // _temp.ShowOrderHistory = false;
-            return WrapResultJson(default(object));
-        }
-
         #endregion
 
         private class TempCache
@@ -375,13 +389,18 @@ namespace LeoMaster6.Controllers
 
             public int[] IdList { get; } = new int[] {
                 100, //order, after creating, driver waiting
-
-                200, //order, canceled
-                201, //order, paid
-                299  //order template
+                101, //order, paid
+                102, //order, canceled
+                199  //order template
+                ,200 //config
+                ,201
+                ,300
+                ,400
+                ,401
+                ,500
             };
 
-            public bool UseHack { get; set; }
+            public bool NeedHackOrder { get; set; }
             public string HackOrderStartAddress { get; set; }
             public float HackOrderStartLat { get; set; }
             public float HackOrderStartLng { get; set; }
@@ -395,8 +414,17 @@ namespace LeoMaster6.Controllers
                 }
             }
 
+            public string HackCancelReason { get; set; }
 
             public List<object> HistoryOrders { get; } = new List<object>();
+
+
+            public bool NeedHackUser { get; set; }
+            public string HackUserName { get; set; }
+            public string HackUserGender { get; set; }
+
+            public double HackDriverDistance { get; set; }
+
 
             public void AddHistory(object history)
             {
@@ -422,140 +450,19 @@ namespace LeoMaster6.Controllers
 
         private class MockData
         {
-            internal static readonly double avaiBalance = 2000;  //can withdraw to bank card
-            internal static readonly double unavaiBalance = 100; //can not withdraw to bank card
-
-
-            public static object GetUser()
+            internal static int GetZoneId()
             {
-                return new
-                {
-                    identity = 100,
-                    name = "刘立想",
-                    gender = "man",
-                    tel = "18612341234",
-                    iconUrl = "demo-user",
-                    availableBalance = avaiBalance,
-                    unavailableBalance = unavaiBalance,
-                    regTime = 1577808000000,
-                    source = "testing",
-                    balance = GetBalance(),
-                    deleted = false
-                };
+                var config = MockYFController.ReadMockingFileAs<MockConfig>(200);
+                var zone = MockYFController.ReadMockingFileAsObject(config.zone_file);
+                return (int)zone.AsJObject()["identity"];
             }
-
-            public static object GetDriver()
-            {
-                return new
-                {
-                    identity = 500,
-                    name = "张三",
-                    gender = "woman",
-                    tel = "17600040004",
-                    iconUrl = default(object), //show the default avatar
-                    drivingLicenseStartDate = 1272643200000, //2010-5-1
-                    jobNum = default(string), //serial number, current working task(order number)
-                    level = 5, //rating
-
-                    point = new { x = 120.1867, y = 30.2483 }, //west lake, HZ
-                    status = "FREE",
-                    serviceTimes = 567 //order count
-                };
-            }
-
-            public static object GetDriver2()
-            {
-                return new
-                {
-                    identity = 501,
-                    name = "李四",
-                    gender = "man",
-                    tel = "17600050005",
-                    iconUrl = "demo-driver",
-                    drivingLicenseStartDate = 1396281600000, //2014-5-1
-                    jobNum = default(string), //serial number, current working task(order number)
-                    level = 4, //rating
-
-                    point = new { x = 120.17, y = 30.27 }, //west lake, HZ
-                    status = "FREE",
-                    serviceTimes = 1585 //order count
-                };
-            }
-
-            public static object GetGeoDistance(double distance)
-            {
-                return new
-                {
-                    value = distance, //direct distance ??
-                    metric = "km", //??
-                    unit = "km",
-                    normalizedValue = distance + 0.4 //??
-                };
-            }
-
-            public static double GetBalance()
-            {
-                return avaiBalance + unavaiBalance;
-            }
-
-            public static object GetCouponList()
-            {
-                System.Threading.Thread.Sleep(1500);
-
-                var one = new
-                {
-                    identity = 100,
-                    type = "fixed",
-                    coupon = 10,
-                    startTime = 1577808000000, //2020-1-1
-                    endTime = default(object),
-                    user = default(object),
-                    beUsed = false
-                };
-
-                var two = new
-                {
-                    identity = 102,
-                    type = "fixed",
-                    coupon = 20,
-                    startTime = 1585843200000, //2020-5-1
-                    endTime = default(object),
-                    user = default(object),
-                    beUsed = false
-                };
-
-                var three = new
-                {
-                    identity = 103,
-                    type = "fixed",
-                    coupon = 199,
-                    startTime = 1585843200000, //2020-4-3
-                    endTime = 1588435200000, //2020-5-3
-                    user = default(object),
-                    beUsed = false
-                };
-
-                var four = new
-                {
-                    identity = 104,
-                    type = "fixed",
-                    coupon = 99,
-                    startTime = 1585843200000, //2020-4-3
-                    endTime = 1617379200000, //2021-4-3
-                    user = default(object),
-                    beUsed = false
-                };
-
-                return new List<object>() { one, two, three, four };
-            }
-
-            public static int GetZoneId()
-            {
-                return 100;
-            }
-
         }
 
+        private class MockConfig
+        {
+            public int zone_file { get; set; }
+            public int create_order_file { get; set; }
+        }
 
         public IHttpActionResult WrapResultEmptyArray()
         {

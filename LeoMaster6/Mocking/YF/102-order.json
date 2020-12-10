@@ -17,9 +17,9 @@
   "driver": {
     "identity": 501,
     "name": "李四",
-    "gender": "woman",
+    "gender": "man",
     "tel": "17600050005",
-    "iconUrl": "5957bd7ecda1316d7bd80bb4",
+    "iconUrl": "demo-driver",
     "availableBalance": 0,
     "unavailableBalance": 0,
     "jobNum": "U00100001",

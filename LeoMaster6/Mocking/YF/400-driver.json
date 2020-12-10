@@ -1,0 +1,24 @@
+﻿{
+  "content": {
+    "identity": 500,
+    "name": "张三",
+    "gender": "woman",
+    "tel": "17600040004",
+    "iconUrl": null,
+    "drivingLicenseStartDate": 1272643200000,
+    "jobNum": null,
+    "level": 5,
+    "point": {
+      "x": 120.1867,
+      "y": 30.2483
+    },
+    "status": "FREE",
+    "serviceTimes": 567
+  },
+  "distance": {
+    "value": 2.4,
+    "metric": "km",
+    "unit": "km",
+    "normalizedValue": 2.7
+  }
+}

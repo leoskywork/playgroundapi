@@ -1,0 +1,38 @@
+﻿[
+  {
+    "identity": 100,
+    "type": "fixed",
+    "coupon": 5,
+    "startTime": 1577808000000,
+    "endTime": null,
+    "user": null,
+    "beUsed": false
+  },
+  {
+    "identity": 102,
+    "type": "fixed",
+    "coupon": 20,
+    "startTime": 1585843200000,
+    "endTime": null,
+    "user": null,
+    "beUsed": false
+  },
+  {
+    "identity": 103,
+    "type": "fixed",
+    "coupon": 199,
+    "startTime": 1585843200000,
+    "endTime": 1588435200000,
+    "user": null,
+    "beUsed": false
+  },
+  {
+    "identity": 104,
+    "type": "fixed",
+    "coupon": 99,
+    "startTime": 1585843200000,
+    "endTime": 1617379200000,
+    "user": null,
+    "beUsed": false
+  }
+]

@@ -1,0 +1,13 @@
+﻿{
+  "identity": 100,
+  "name": "刘立想",
+  "gender": "man",
+  "tel": "18612341234",
+  "iconUrl": "demo-user",
+  "availableBalance": 2000,
+  "unavailableBalance": 100,
+  "regTime": 1577808000000,
+  "source": "testing",
+  "balance": 2100,
+  "deleted": false
+}

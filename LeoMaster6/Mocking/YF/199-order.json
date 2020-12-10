@@ -1,6 +1,6 @@
 ﻿{
-  "identity": 201,
-  "orderNo": "17081300540201",
+  "identity": 299,
+  "orderNo": "17081300540299",
   "creator": {
     "identity": 11,
     "name": "刘立想",
@@ -17,9 +17,9 @@
   "driver": {
     "identity": 501,
     "name": "李四",
-    "gender": "woman",
+    "gender": "man",
     "tel": "17600050005",
-    "iconUrl": "5957bd7ecda1316d7bd80bb4",
+    "iconUrl": "demo-driver",
     "availableBalance": 0,
     "unavailableBalance": 0,
     "jobNum": "U00100001",
@@ -65,7 +65,7 @@
     "balance": 0,
     "deleted": false
   },
-  "status": "paid",
+  "status": "canceled",
   "createOrderNode": {
     "identity": 161,
     "lng": 120.1867264737466,
@@ -77,7 +77,7 @@
     "identity": 162,
     "lng": 120.1863494873047,
     "lat": 30.2489422302246,
-    "addr": "竹竿巷-37栋",
+    "addr": "龙翔大厦",
     "locDate": 1606752300000
   },
   "planEndLoc": {
@@ -133,7 +133,7 @@
   "totalPrice": 58.00,
   "chargeDetail": null,
   "type": "realtime",
-  "feePlan": 1,
+  "feePlan": null,
   "commission": 0.1,
   "distance": 2.0,
   "createBy": "customer",

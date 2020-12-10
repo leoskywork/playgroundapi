@@ -1,0 +1,27 @@
+﻿ {
+    "identity": 100,
+    "name": "杭州市",
+    "feePlan": {
+      "identity": 1,
+      "name": "方案一",
+      "details": [
+        {
+          "identity": 1,
+          "startHour": 8,
+          "startMinute": 30,
+          "endHour": 23,
+          "endMinute": 30,
+          "initialPrice": 35.00,
+          "initialKilometers": 10,
+          "freeWaitMinute": 10,
+          "waitPricePerMinute": 1.00,
+          "priceUnit": 10,
+          "unitPrice": 20.00,
+          "describe": "每日08:30 - 23:30\r\n起步10公里内：35.00元\r\n超过10公里：每10公里加收20.00元（不足10公里按10公里计算）\r\n免费等待：10分钟\r\n超过10分钟：每分钟加收1.00元"
+        }
+      ],
+      "deleted": false
+    },
+    "root": false,
+    "deleted": false
+  }
