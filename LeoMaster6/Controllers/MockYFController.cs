@@ -44,7 +44,6 @@ namespace LeoMaster6.Controllers
 
         #endregion
 
-
         #region Mocking
 
 
@@ -227,48 +226,6 @@ namespace LeoMaster6.Controllers
             return fileObject;
         }
 
-        [HttpGet]
-        [Route("pos/circle")]
-        public IHttpActionResult Get__1(double longitude, double latitude)
-        {
-            double allowOffset = 0.15;
-
-            if (Math.Abs(longitude - 120.2) > allowOffset || Math.Abs(latitude - 30.2) > allowOffset)
-            {
-                return WrapResultJson(new object[] { });
-            }
-
-            _temp.HackDriverDistance = (DateTime.UtcNow.Second % 30) * 0.2 + 1;
-
-            var driver = ReadMockingFileAsObject(400, DoHackDriverDistance);
-            System.Threading.Thread.Sleep(DateTime.UtcNow.Millisecond % 100);
-            var driver2 = ReadMockingFileAsObject(401, DoHackDriverDistance);
-            var drivers = new object[] { driver, driver2 };
-
-            if (_temp.CircleDriverCount == 1)
-            {
-                drivers = new object[] { driver };
-            }
-
-            return WrapResultJson(new { content = drivers });
-        }
-
-        [HttpPost]
-        [Route("driveOrder/realtime")]
-        public IHttpActionResult Get__2()
-        {
-            System.Threading.Thread.Sleep(500);
-
-            if (_temp.OrderStatus == 1)
-            {
-                var fileObject = ReadMockingFileAsObject(100, DoHackOrderIfNeed);
-
-                return WrapResultJson(new object[] { fileObject });
-            }
-
-            return WrapResultEmptyArray();
-        }
-
         private static void DoHackOrderIfNeed(object file)
         {
             if (!_temp.NeedHackOrder) return;
@@ -323,6 +280,48 @@ namespace LeoMaster6.Controllers
             fileObject["distance"]["normalizedValue"] = distance + 0.4;
         }
 
+        [HttpGet]
+        [Route("pos/circle")]
+        public IHttpActionResult Get__1(double longitude, double latitude)
+        {
+            double allowOffset = 0.15;
+
+            if (Math.Abs(longitude - 120.2) > allowOffset || Math.Abs(latitude - 30.2) > allowOffset)
+            {
+                return WrapResultJson(new object[] { });
+            }
+
+            _temp.HackDriverDistance = (DateTime.UtcNow.Second % 30) * 0.2 + 1;
+
+            var driver = ReadMockingFileAsObject(400, DoHackDriverDistance);
+            System.Threading.Thread.Sleep(DateTime.UtcNow.Millisecond % 100);
+            var driver2 = ReadMockingFileAsObject(401, DoHackDriverDistance);
+            var drivers = new object[] { driver, driver2 };
+
+            if (_temp.CircleDriverCount == 1)
+            {
+                drivers = new object[] { driver };
+            }
+
+            return WrapResultJson(new { content = drivers });
+        }
+
+        [HttpPost]
+        [Route("driveOrder/realtime")]
+        public IHttpActionResult Get__2()
+        {
+            System.Threading.Thread.Sleep(500);
+
+            if (_temp.OrderStatus == 1)
+            {
+                var fileObject = ReadMockingFileAsObject(100, DoHackOrderIfNeed);
+
+                return WrapResultJson(new object[] { fileObject });
+            }
+
+            return WrapResultEmptyArray();
+        }
+
         [HttpPost] //should be GET, return order by id
         [Route("driveOrder/{id:int}")]
         public IHttpActionResult Get__202(int id)
@@ -355,12 +354,13 @@ namespace LeoMaster6.Controllers
 
         #endregion
 
+        #region wrap result
+
         public IHttpActionResult WrapResultEmptyArray()
         {
             return WrapResultJson(new object[] { });
         }
 
-        //class ApiResult
         public IHttpActionResult WrapResultJson<T>(T data, bool hasError = false, string message = null, bool simpleVersion = false)
         {
             return Json(WrapResult(data, hasError, message, simpleVersion));
@@ -379,6 +379,9 @@ namespace LeoMaster6.Controllers
             };
         }
 
+        #endregion
+
+        #region inner classes
 
         private class TempCache
         {
@@ -485,6 +488,8 @@ namespace LeoMaster6.Controllers
             public int identity { get; set; }
             public long locDate { get; set; }
         }
+
+        #endregion
 
     }
 }
