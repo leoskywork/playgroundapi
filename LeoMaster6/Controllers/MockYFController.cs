@@ -88,7 +88,7 @@ namespace LeoMaster6.Controllers
         [Route("setting/fee/getPriceByCityAndDistance")]
         public IHttpActionResult Get__________()
         {
-            return WrapResultJson(30.0 + System.DateTime.Now.Second % 30);
+            return WrapResultJson(30.0 + System.DateTime.UtcNow.Second % 30);
         }
 
         [HttpGet]
@@ -177,7 +177,7 @@ namespace LeoMaster6.Controllers
 
             _temp.NeedHackOrder = true;
             _temp.HackOrderStartAddress = body.planStartLoc.addr;
-            _temp.HackOrderStartTimeSince1970 = _temp.GetMSSince1970(DateTime.Now);
+            _temp.HackOrderStartTimeSince1970 = _temp.GetMSSince1970(DateTime.UtcNow);
             _temp.HackOrderStartLat = body.planStartLoc.lat;
             _temp.HackOrderStartLng = body.planStartLoc.lng;
             _temp.HackOrderEndAddress = body.planEndLoc?.addr ?? null;
@@ -209,27 +209,7 @@ namespace LeoMaster6.Controllers
 
         #endregion
 
-        #region Mocking - return null data
-
-        public class OrderBody
-        {
-            public Location planStartLoc { get; set; }
-            public Location planEndLoc { get; set; }
-        }
-
-        public class CancelOrderBody
-        {
-            public string reason { get; set; }
-        }
-
-        public class Location
-        {
-            public string addr { get; set; }
-            public float lng { get; set; }
-            public float lat { get; set; }
-            public int identity { get; set; }
-            public long locDate { get; set; }
-        }
+        #region Mocking - hack return data
 
         private static T ReadMockingFileAs<T>(int id)
         {
@@ -247,7 +227,6 @@ namespace LeoMaster6.Controllers
             return fileObject;
         }
 
-
         [HttpGet]
         [Route("pos/circle")]
         public IHttpActionResult Get__1(double longitude, double latitude)
@@ -259,11 +238,10 @@ namespace LeoMaster6.Controllers
                 return WrapResultJson(new object[] { });
             }
 
-            var dis = (DateTime.Now.Second % 30) * 0.2;
-            _temp.HackDriverDistance = dis + 1;
+            _temp.HackDriverDistance = (DateTime.UtcNow.Second % 30) * 0.2 + 1;
 
             var driver = ReadMockingFileAsObject(400, DoHackDriverDistance);
-            System.Threading.Thread.Sleep(DateTime.Now.Millisecond % 100);
+            System.Threading.Thread.Sleep(DateTime.UtcNow.Millisecond % 100);
             var driver2 = ReadMockingFileAsObject(401, DoHackDriverDistance);
             var drivers = new object[] { driver, driver2 };
 
@@ -308,7 +286,7 @@ namespace LeoMaster6.Controllers
             }
             else
             {
-                fileObject["planEndLoc"]["identity"] = DateTime.Now.Millisecond;
+                fileObject["planEndLoc"]["identity"] = DateTime.UtcNow.Millisecond;
                 fileObject["planEndLoc"]["addr"] = _temp.HackOrderEndAddress;
             }
 
@@ -322,7 +300,7 @@ namespace LeoMaster6.Controllers
                 fileObject["createOrderNode"]["locDate"] = _temp.HackOrderStartTimeSince1970;
             }
 
-            fileObject["waitMinutes"] = (int)(_temp.GetMSSince1970(DateTime.Now) - _temp.HackOrderStartTimeSince1970) / 1000 / 60 + 1;
+            fileObject["waitMinutes"] = (int)(_temp.GetMSSince1970(DateTime.UtcNow) - _temp.HackOrderStartTimeSince1970) / 1000 / 60 + 1;
             fileObject["canceledReason"] = _temp.HackCancelReason;
         }
 
@@ -339,7 +317,7 @@ namespace LeoMaster6.Controllers
         private static void DoHackDriverDistance(object file)
         {
             var fileObject = file as Newtonsoft.Json.Linq.JObject;
-            var distance = _temp.HackDriverDistance + (DateTime.Now.Millisecond % 10) * 0.1;
+            var distance = _temp.HackDriverDistance + (DateTime.UtcNow.Millisecond % 10) * 0.1;
 
             fileObject["distance"]["value"] = distance;
             fileObject["distance"]["normalizedValue"] = distance + 0.4;
@@ -376,6 +354,31 @@ namespace LeoMaster6.Controllers
         }
 
         #endregion
+
+        public IHttpActionResult WrapResultEmptyArray()
+        {
+            return WrapResultJson(new object[] { });
+        }
+
+        //class ApiResult
+        public IHttpActionResult WrapResultJson<T>(T data, bool hasError = false, string message = null, bool simpleVersion = false)
+        {
+            return Json(WrapResult(data, hasError, message, simpleVersion));
+        }
+
+        public static object WrapResult<T>(T data, bool hasError = false, string message = null, bool simpleVersion = false)
+        {
+            if (simpleVersion) return new { data };
+
+            return new
+            {
+                data,
+                success = !hasError,
+                message,
+                map = data//bad design, just for compatible here 
+            };
+        }
+
 
         private class TempCache
         {
@@ -414,8 +417,9 @@ namespace LeoMaster6.Controllers
                 }
             }
 
-            public string HackCancelReason { get; set; }
 
+            public string HackCancelReason { get; set; }
+            public double HackDriverDistance { get; set; }
             public List<object> HistoryOrders { get; } = new List<object>();
 
 
@@ -423,15 +427,13 @@ namespace LeoMaster6.Controllers
             public string HackUserName { get; set; }
             public string HackUserGender { get; set; }
 
-            public double HackDriverDistance { get; set; }
-
 
             public void AddHistory(object history)
             {
                 var jsonHistory = (Newtonsoft.Json.Linq.JObject)history;
 
-                jsonHistory["identity"] = this.GetMSSince1970(DateTime.Now) / 1000;
-                jsonHistory["orderNo"] = "1708" + this.GetMSSince1970(DateTime.Now).ToString();
+                jsonHistory["identity"] = this.GetMSSince1970(DateTime.UtcNow) / 1000;
+                jsonHistory["orderNo"] = "1708" + this.GetMSSince1970(DateTime.UtcNow).ToString();
 
 
                 if (HistoryOrders.Count >= 10)
@@ -464,28 +466,25 @@ namespace LeoMaster6.Controllers
             public int create_order_file { get; set; }
         }
 
-        public IHttpActionResult WrapResultEmptyArray()
+        public class OrderBody
         {
-            return WrapResultJson(new object[] { });
+            public Location planStartLoc { get; set; }
+            public Location planEndLoc { get; set; }
         }
 
-        //class ApiResult
-        public IHttpActionResult WrapResultJson<T>(T data, bool hasError = false, string message = null, bool simpleVersion = false)
+        public class CancelOrderBody
         {
-            return Json(WrapResult(data, hasError, message, simpleVersion));
+            public string reason { get; set; }
         }
 
-        public static object WrapResult<T>(T data, bool hasError = false, string message = null, bool simpleVersion = false)
+        public class Location
         {
-            if (simpleVersion) return new { data };
-
-            return new
-            {
-                data,
-                success = !hasError,
-                message,
-                map = data//bad design, just for compatible here 
-            };
+            public string addr { get; set; }
+            public float lng { get; set; }
+            public float lat { get; set; }
+            public int identity { get; set; }
+            public long locDate { get; set; }
         }
+
     }
 }
