@@ -22,8 +22,10 @@ namespace LeoMaster6.Controllers
             var format = "yyyy-MM-dd H:mm:ss";
             var createAt = fileInfo.CreationTime;
             var lastWrite = fileInfo.LastWriteTime;
+            var span = DateTime.Now - lastWrite;
+            var ago = span.TotalMinutes.ToString("#.#") + " min ago";
 
-            return Json($"Asp.NET api; {string.Join(";", assembly.FullName.Split(',').Take(2))}; Initial build at {createAt.ToString(format)}({createAt.Kind}); Last build at {lastWrite.ToString(format)}({lastWrite.Kind})");
+            return Json($"Asp.NET api; {string.Join(";", assembly.FullName.Split(',').Take(2))}; Initial build at {createAt.ToString(format)}({createAt.Kind}); Last build at {lastWrite.ToString(format)}({lastWrite.Kind}) - {ago}");
         }
     }
 }

@@ -424,13 +424,14 @@ namespace LeoMaster6.Controllers
 
             if(!string.IsNullOrEmpty(inputPass))
             {
-                var inputMaxLength = 24;
+                const int inputMaxLength = 24;
+                const int inputMinLength = 4;
+                const int offsetLength = 2;
 
                 if (inputPass.Length > inputMaxLength) return ValidationResult.Fail("input lsk too long");
-                if (inputPass.Length < 6) return ValidationResult.Fail("input lsk to short");
+                if (inputPass.Length < inputMinLength) return ValidationResult.Fail("input lsk to short");
 
-                var offsetLength = 2;
-                var offsetString = inputPass.Substring(4, offsetLength);
+                var offsetString = inputPass.Substring(inputPass.Length - offsetLength, offsetLength);
                 var configPath = GetFullIntrospectionDataPath(DateTime.Now, IntrospectionDataType.Config);
                 var lines = File.ReadAllLines(configPath);
                 var configLine = lines.FirstOrDefault(l => !string.IsNullOrEmpty(l));
