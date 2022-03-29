@@ -120,7 +120,7 @@ namespace LeoMaster6.Controllers
 
         [HttpGet]
         [Route("account/logout")]
-        public IHttpActionResult Get__4()
+        public IHttpActionResult Get__444()
         {
             _temp.OrderStatus = 0;
             // _temp.ShowOrderHistory = false;
