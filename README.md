@@ -1,12 +1,17 @@
 # Playground api
 
-Providing backend api for testing/learning purpose, powered by asp.net.
+Providing backend api for testing/learning purpose, powered by asp.net(.net framework 4.6)
 
 ## Project LeoMaster6
 
-Build bits will be copied to debug folder(.../api/) for testing(localhost:84/api) first, and may not be put to prod folder.
-
-* integrate with log4net.
+* integrated with log4net
+* mocking YF app api
+* introspection api with persistance layer(txt file as data source)
+* test
+  * api version:    http://localhost:57005/tool
+  * master web age: http://localhost:57005/app/age
+  * mocking yf:     http://localhost:57005/mock-yf
+  * introspection:  http://localhost:57005/introspection
 
 ## todo
 
@@ -21,8 +26,8 @@ Build bits will be copied to debug folder(.../api/) for testing(localhost:84/api
 * how to fix UnauthorizedAccessException?
   > grant proper permissions to user IIS_IUSRS on that folder
 * invalid hostname error when send http request by local IP address
-  > working: get http://localhost:57005/mock-yf/
+  > working:     get http://localhost:57005/mock-yf/
   > not working: get http://192.168.2.5:57005/mock-yf/
-  > fix: https://blog.csdn.net/qianxing111/article/details/79884527
+  > fix:         https://blog.csdn.net/qianxing111/article/details/79884527
     * modify applicationhost.config file
 	* close VS, then start with admin permission

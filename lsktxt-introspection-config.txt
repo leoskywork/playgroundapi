@@ -1,0 +1,6 @@
+{
+    "Passcode": 6677,
+    "AntiSpamToken": "6677",
+     "DeletionToken": "66",
+     "LskMaxDBFileSizeKB": 5120
+}

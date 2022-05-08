@@ -380,7 +380,7 @@ namespace LeoMaster6.Controllers
                         Directory.CreateDirectory(dir);
                     }
 
-                    using (File.Create(dir)) { }
+                    using (File.Create(path)) { }
                 }
 
                 ensureFileExists(routinePath);
@@ -406,8 +406,9 @@ namespace LeoMaster6.Controllers
                 return ValidationResult.Fail("config file error. 0xe03");
             }
 
-            lines = File.ReadAllLines(routinePath);
-            if (!lines.Any(l => !string.IsNullOrEmpty(l))) return ValidationResult.Fail("missing routine items in file: " + Path.GetFileName(routinePath));
+            //allow empty
+            //lines = File.ReadAllLines(routinePath);
+            //if (!lines.Any(l => !string.IsNullOrEmpty(l))) return ValidationResult.Fail("missing routine items in file: " + Path.GetFileName(routinePath));
 
             return ValidationResult.Success();
         }
