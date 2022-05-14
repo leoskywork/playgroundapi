@@ -9,6 +9,7 @@ using System.Web.Http;
 
 namespace LeoMaster6.Controllers
 {
+    //also need to set "Route" attribute on CRUD method
     [RoutePrefix("v2/note")]
     public class RestfulNoteController : BaseController
     {

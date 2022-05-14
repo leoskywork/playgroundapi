@@ -123,6 +123,7 @@
     <Compile Include="Controllers\BaseController.cs" />
     <Compile Include="Controllers\IntrospectionController.cs" />
     <Compile Include="Controllers\MockController.cs" />
+    <Compile Include="Controllers\TodoController.cs" />
     <Compile Include="Controllers\NoteController.cs" />
     <Compile Include="Controllers\RestfulNoteController.cs" />
     <Compile Include="Controllers\MockYFController.cs" />
