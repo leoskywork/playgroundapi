@@ -16,6 +16,8 @@ Providing backend api for testing/learning purpose, powered by asp.net(.net fram
 
 ## todo
 
+* [ ] make the publish/signing working on vs 2022
+    * [ ] remove the not-working post build event scripts
 * [x] make logger.Info(...) work
 * [ ] multiple get methods not working??
     * [x] get result - invalid json format??
