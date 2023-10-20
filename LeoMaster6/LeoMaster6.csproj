@@ -117,7 +117,6 @@
   <ItemGroup>
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Common\Constants.cs" />
-    <Compile Include="Common\Temp.cs" />
     <Compile Include="Common\Utility.cs" />
     <Compile Include="Controllers\AppController.cs" />
     <Compile Include="Controllers\BaseController.cs" />
@@ -139,8 +138,8 @@
     </Compile>
     <Compile Include="Models\DtoResult.cs" />
     <Compile Include="Models\DtoRoutine.cs" />
-    <Compile Include="Models\Helpers\PerfCounter.cs" />
-    <Compile Include="Models\Helpers\ValidationResult.cs" />
+    <Compile Include="Common\PerfCounter.cs" />
+    <Compile Include="Common\ValidationResult.cs" />
     <Compile Include="Models\ILskLine.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Controllers\ToolController.cs" />
